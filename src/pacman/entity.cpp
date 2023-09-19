@@ -45,8 +45,13 @@ void Ghost::step(const Location &location, const MovementDirection &direction) {
     }
     break;
     
-    case GhostMode::freight:
-      break;
+    case GhostMode::freight: {
+      if (config.step_index >= config.freight_steps) {
+        config.step_index = 0;
+        set_mode(GhostMode::chase);
+      }
+    }
+    break;
     
     case GhostMode::eaten:
       break;
@@ -195,6 +200,13 @@ Location Clyde::get_target(Pacman* pacman) {
       __builtin_unreachable();
   }
 }
+
+
+
+Item::Item(EntityType type, Location location, i32 points):
+  Entity(type, location, MovementDirection::none),
+  points(points)
+{ }
 
 
 

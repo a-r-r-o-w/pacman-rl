@@ -98,6 +98,15 @@ class Clyde: public Ghost {
     Location get_target(Pacman* pacman);
 };
 
+class Item: public Entity {
+  public:
+    i32 points;
+  
+  public:
+    Item(EntityType type, Location location, i32 points);
+    ~Item() = default;
+};
+
 class Wall: public Entity {
   public:
     Wall(Location location);

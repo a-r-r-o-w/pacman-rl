@@ -14,6 +14,8 @@ enum EntityType {
   pacman,
   wall,
   gate,
+  pellet,
+  power_pellet,
 };
 
 enum MovementDirection {
@@ -24,11 +26,6 @@ enum MovementDirection {
   none,
 };
 
-enum class RenderMode {
-  none,
-  stdout,
-};
-
 enum GhostMode {
   chase,
   scatter,
@@ -37,14 +34,33 @@ enum GhostMode {
   house,
 };
 
+enum class RenderMode {
+  none,
+  stdout,
+};
+
 inline constexpr char entity_type_to_char[] = {
-  [EntityType::blinky] = '0',
-  [EntityType::pinky]  = '1',
-  [EntityType::inky]   = '2',
-  [EntityType::clyde]  = '3',
-  [EntityType::pacman] = 'P',
-  [EntityType::wall]   = '#',
-  [EntityType::gate]   = 'G',
+  [EntityType::blinky]       = '0',
+  [EntityType::pinky]        = '1',
+  [EntityType::inky]         = '2',
+  [EntityType::clyde]        = '3',
+  [EntityType::pacman]       = 'P',
+  [EntityType::wall]         = '#',
+  [EntityType::gate]         = 'G',
+  [EntityType::pellet]       = '.',
+  [EntityType::power_pellet] = '+',
+};
+
+inline constexpr i32 entity_type_render_precedence[] = {
+  [EntityType::blinky]       = 1,
+  [EntityType::pinky]        = 1,
+  [EntityType::inky]         = 1,
+  [EntityType::clyde]        = 1,
+  [EntityType::pacman]       = 2,
+  [EntityType::wall]         = 3,
+  [EntityType::gate]         = 3,
+  [EntityType::pellet]       = 0,
+  [EntityType::power_pellet] = 0,
 };
 
 inline constexpr i32 movement_direction_delta_x[] = {
