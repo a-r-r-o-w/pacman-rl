@@ -4,32 +4,32 @@
 
 #include "environment.hpp"
 
-i32 timestep = 100;
+i32 sleep_ms = 200;
 Config config = {
   .rows = 21,
   .cols = 20,
   .max_episode_steps = 200,
   .map = {
     "###################",
-    "#        #        #",
-    "# ## ### # ### ## #",
-    "#                 #",
-    "# ## # ##### # ## #",
-    "#    #   #   #    #",
-    "#### ### # ### ####",
-    "#### #   0   # ####",
-    "#### # ##G## # ####",
-    "#      #123#      #",
-    "#### # ##### # ####",
-    "#### #   P   # ####",
-    "#### # ##### # ####",
-    "#        #        #",
-    "# ## ### # ### ## #",
-    "#  #           #  #",
-    "## # # ##### # # ##",
-    "#    #   #   #    #",
-    "# ###### # ###### #",
-    "#                 #",
+    "#........#........#",
+    "#+##.###.#.###.##+#",
+    "#.................#",
+    "#.##.#.#####.#.##.#",
+    "#....#...#...#....#",
+    "####.###.#.###.####",
+    "####.#...0...#.####",
+    "####.#.##G##.#.####",
+    "#......#123#......#",
+    "####.#.#####.#.####",
+    "####.#...P...#.####",
+    "####.#.#####.#.####",
+    "#........#........#",
+    "#.##.###.#.###.##.#",
+    "#+.#...........#.+#",
+    "##.#.#.#####.#.#.##",
+    "#....#...#...#....#",
+    "#.######.#.######.#",
+    "#.................#",
     "###################",
   }
 };
@@ -39,7 +39,7 @@ State step(Environment &e, const MovementDirection &direction) {
   State state = e.step(direction);
   // State state = e.step(MovementDirection::none);  
   e.render(RenderMode::stdout);
-  std::this_thread::sleep_for(std::chrono::milliseconds(timestep));
+  std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
   return state;
 }
 
@@ -58,7 +58,7 @@ int main() {
 
   system("clear");
   e.render(RenderMode::stdout);
-  std::this_thread::sleep_for(std::chrono::milliseconds(timestep));
+  std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
   
   while (not state.completed) {
     // state = step(e, moves[index++ % moves.size()]);

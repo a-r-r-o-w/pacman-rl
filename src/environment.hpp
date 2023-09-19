@@ -2,16 +2,19 @@
 #define HEADER_ENVIRONMENT_H
 #pragma once
 
+#include <memory>
 #include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
 
+#include "types.hpp"
 #include "pacman/constants.hpp"
 #include "pacman/entity.hpp"
 #include "pacman/grid.hpp"
+#include "pacman/state.hpp"
 #include "pacman/utils.hpp"
-#include "types.hpp"
+#include "render/ascii_renderer.hpp"
 
 inline GhostConfig default_blinky_config {
   .chase_steps = 30,
@@ -71,26 +74,27 @@ struct Config {
   // Ghost specific attributes
   i32 pinky_target_offset = 4;
   i32 clyde_target_switch_distance = 8;
-};
 
-struct State {
-  bool completed;
-  i32 step_index;
+  // Pellet properties
+  i32 pellet_points = 10;
+  i32 power_pellet_points = 50;
 };
 
 class Environment {
   private:
-    std::vector <Entity*> dynamic_storage;
+    std::vector <std::pair <i32, Entity*>> dynamic_storage;
+    AsciiRenderer ascii_renderer;
   
   public:
     Config config;
     State state;
     Grid grid;
-    Pacman *pacman;
-    Blinky *blinky;
-    Pinky *pinky;
-    Inky *inky;
-    Clyde *clyde;
+    std::unique_ptr <Pacman> pacman;
+    std::unique_ptr <Blinky> blinky;
+    std::unique_ptr <Pinky> pinky;
+    std::unique_ptr <Inky> inky;
+    std::unique_ptr <Clyde> clyde;
+    std::vector <std::unique_ptr <Entity>> entities;
 
   public:
     Environment(const Config &c);
@@ -101,11 +105,14 @@ class Environment {
   
   private:
     std::pair <Location, MovementDirection> perform_pacman_step(const MovementDirection &direction);
-    std::pair <Location, MovementDirection> perform_ghost_step(Ghost* ghost, const Location &target);
+    std::pair <Location, MovementDirection> perform_ghost_step(Ghost* ghost, Location target);
 
-    bool is_valid_move(const Location &location);;
+    bool is_valid_pacman_move(const Location &location);
+    bool is_valid_ghost_move(Ghost *ghost, const Location &location);
 
     void initialize_grid();
+    void assign_state_grid_from_grid();
+    void update_score(const Location &location);
     void sync_ghost_config();
     void unset_grid(Entity *entity);
     void set_grid(Entity *entity);
