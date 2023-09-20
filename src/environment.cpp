@@ -3,10 +3,11 @@
 Environment::Environment(const Config &c):
   config(c),
   state({
-    .completed = false,
     .step_index = 0,
     .score = 0,
-    .grid = std::vector <std::string> (config.rows, std::string(config.cols, ' '))
+    .lives = config.pacman_lives,
+    .completed = false,
+    .grid = std::vector <std::string> (config.rows, std::string(config.cols, ' ')),
   }),
   grid(config.rows, config.cols) {
   sync_ghost_config();
@@ -16,14 +17,14 @@ Environment::Environment(const Config &c):
   pinky  = std::make_unique<Pinky>(config.pinky_config, config.pinky_target_offset);
   inky   = std::make_unique<Inky>(config.inky_config);
   clyde  = std::make_unique<Clyde>(config.clyde_config, config.clyde_target_switch_distance);
-  dynamic_storage.emplace_back(entity_type_render_precedence[pacman->type], pacman.get());
-  dynamic_storage.emplace_back(entity_type_render_precedence[blinky->type], blinky.get());
-  dynamic_storage.emplace_back(entity_type_render_precedence[pinky->type], pinky.get());
-  dynamic_storage.emplace_back(entity_type_render_precedence[inky->type], inky.get());
-  dynamic_storage.emplace_back(entity_type_render_precedence[clyde->type], clyde.get());
+  grid_storage.emplace_back(entity_type_render_precedence[pacman->type], pacman.get());
+  grid_storage.emplace_back(entity_type_render_precedence[blinky->type], blinky.get());
+  grid_storage.emplace_back(entity_type_render_precedence[pinky->type], pinky.get());
+  grid_storage.emplace_back(entity_type_render_precedence[inky->type], inky.get());
+  grid_storage.emplace_back(entity_type_render_precedence[clyde->type], clyde.get());
 
   initialize_grid();
-  std::sort(dynamic_storage.begin(), dynamic_storage.end());
+  std::sort(grid_storage.begin(), grid_storage.end());
   assign_state_grid_from_grid();
 }
 
@@ -57,30 +58,93 @@ State Environment::step(const MovementDirection &direction) {
   auto [pinky_location, pinky_direction]   = perform_ghost_step(pinky.get(), pinky_target);
   auto [inky_location, inky_direction]     = perform_ghost_step(inky.get(), inky_target);
   auto [clyde_location, clyde_direction]   = perform_ghost_step(clyde.get(), clyde_target);
-// std::cout << "Blinky: " << blinky_location.x << " " << blinky_location.y << "\n";
+  bool entities_should_step = true;
 
-  update_score(pacman_location);
+  if (pacman_location == blinky_location or pacman_location == pinky_location or
+      pacman_location == inky_location or pacman_location == clyde_location) {
+    handle_pacman_death();
+    entities_should_step = false;
+  }
+  else {
+    Entity *entity = grid.get(pacman_location);
+    
+    // If there is no existing entity at this cell, there is nothing to update as positions
+    // are handled elsewhere
+    if (entity == nullptr)
+      ;
+    
+    // Handle score update and activating power pellet mode based on entity type
+    else if (entity->type == EntityType::pellet or entity->type == EntityType::power_pellet) {
+      Item *item = static_cast<Item*>(entity);
+      state.score += item->points;
+
+      if (item->type == EntityType::power_pellet) {
+        blinky->set_mode(GhostMode::freight);
+        pinky->set_mode(GhostMode::freight);
+        inky->set_mode(GhostMode::freight);
+        clyde->set_mode(GhostMode::freight);
+      }
+      
+      // TODO: Find a better way to do this
+      i32 index = -1;
+      for (i32 i = 0; i < (i32)grid_storage.size(); ++i) {
+        auto &[_, entity] = grid_storage[i];
+        if (entity == item) {
+          index = i;
+          break;
+        }
+      }
+      
+      if (index != -1)
+        grid_storage.erase(grid_storage.begin() + index);
+      else
+        throw std::runtime_error("This should not be possible.");
+    }
+
+    // Handle collision with ghost based on current ghost mode.
+    // If ghost is in chase/scatter mode, pacman loses a life.
+    // If ghost is in freight mode, pacman eats it and gets extra points while also sending it back inside the house.
+    else if (
+      entity->type == EntityType::blinky or entity->type == EntityType::pinky or
+      entity->type == EntityType::inky   or entity->type == EntityType::clyde
+    ) {
+      Ghost *ghost = static_cast<Ghost*>(entity);
+      if (ghost->config.mode == GhostMode::chase or ghost->config.mode == GhostMode::scatter) {
+        handle_pacman_death();
+        entities_should_step = false;
+      }
+      else if (ghost->config.mode == GhostMode::freight) {
+
+      }
+      // else
+      //   throw std::runtime_error("This should not beeee possible.");
+    }
+  }
   
-  for (auto &[_, entity]: dynamic_storage)
+  for (auto &[_, entity]: grid_storage)
     unset_grid(entity);
 
-  pacman->set(pacman_location, pacman_direction);
-  blinky->step(blinky_location, blinky_direction);
-  pinky->step(pinky_location, pinky_direction);
-  inky->step(inky_location, inky_direction);
-  clyde->step(clyde_location, clyde_direction);
+  if (entities_should_step) {
+    pacman->set(pacman_location, pacman_direction);
+    blinky->step(blinky_location, blinky_direction);
+    pinky->step(pinky_location, pinky_direction);
+    inky->step(inky_location, inky_direction);
+    clyde->step(clyde_location, clyde_direction);
+  }
 
-  for (auto &[_, entity]: dynamic_storage)
+  for (auto &[_, entity]: grid_storage)
     set_grid(entity);
 
   state.step_index += 1;
   if (state.step_index >= config.max_episode_steps)
     state.completed = true;
+  
   assign_state_grid_from_grid();
+  
   return state;
 }
 
-std::pair <Location, MovementDirection> Environment::perform_pacman_step(const MovementDirection &direction) {
+Environment::Step Environment::perform_pacman_step(const MovementDirection &direction) {
   i32 nx = pacman->location.x + movement_direction_delta_x[direction];
   i32 ny = pacman->location.y + movement_direction_delta_y[direction];
 
@@ -90,7 +154,7 @@ std::pair <Location, MovementDirection> Environment::perform_pacman_step(const M
   return {Location{pacman->location.x, pacman->location.y}, pacman->direction};
 }
 
-std::pair <Location, MovementDirection> Environment::perform_ghost_step(Ghost *ghost, Location target) {
+Environment::Step Environment::perform_ghost_step(Ghost *ghost, Location target) {
   if (ghost->config.mode == GhostMode::house)
     return {ghost->location, MovementDirection::none};
   
@@ -110,9 +174,15 @@ std::pair <Location, MovementDirection> Environment::perform_ghost_step(Ghost *g
       return {ghost->location, ghost->direction};
   }
   
-  i32 best_x = ghost->location.x, best_y = ghost->location.y, best_distance = i32_inf;
+  i32 best_x = ghost->location.x, best_y = ghost->location.y;
+  i32 best_distance = ghost->config.mode != GhostMode::freight ? i32_inf : -i32_inf;
   MovementDirection best_direction = ghost->direction;
   bool has_valid_move = false;
+  auto best_criterion = [&] (i32 x, i32 y) {
+    if (ghost->config.mode != GhostMode::freight)
+      return x < y;
+    return x > y;
+  };
 
   for (const MovementDirection &direction: movement_direction_precedence) {
   // for (const MovementDirection &direction: legal_ghost_movement_direction[ghost->direction]) {
@@ -125,7 +195,7 @@ std::pair <Location, MovementDirection> Environment::perform_ghost_step(Ghost *g
     if (is_valid_ghost_move(ghost, {nx, ny})) {
       has_valid_move = true;
       i32 distance = manhattan_distance(nx, ny, target.x, target.y);
-      if (distance < best_distance) {
+      if (best_criterion(distance, best_distance)) {
         best_distance = distance;
         best_x = nx;
         best_y = ny;
@@ -141,7 +211,7 @@ std::pair <Location, MovementDirection> Environment::perform_ghost_step(Ghost *g
 
     if (is_valid_ghost_move(ghost, {nx, ny})) {
       i32 distance = manhattan_distance(nx, ny, target.x, target.y);
-      if (distance < best_distance) {
+      if (best_criterion(distance, best_distance)) {
         best_x = nx;
         best_y = ny;
         best_direction = direction;
@@ -179,7 +249,7 @@ void Environment::initialize_grid() {
           entities.emplace_back(std::make_unique<Wall>(location));
           Wall *wall = static_cast<Wall*>(entities.back().get());
           set_grid(wall);
-          dynamic_storage.emplace_back(entity_type_render_precedence[wall->type], wall);
+          grid_storage.emplace_back(entity_type_render_precedence[wall->type], wall);
         }
         break;
 
@@ -187,7 +257,7 @@ void Environment::initialize_grid() {
           entities.emplace_back(std::make_unique<Gate>(location));
           Gate *gate = static_cast<Gate*>(entities.back().get());
           set_grid(gate);
-          dynamic_storage.emplace_back(entity_type_render_precedence[gate->type], gate);
+          grid_storage.emplace_back(entity_type_render_precedence[gate->type], gate);
         }
         break;
 
@@ -195,7 +265,7 @@ void Environment::initialize_grid() {
           entities.emplace_back(std::make_unique<Item>(EntityType::pellet, location, config.pellet_points));
           Item *item = static_cast<Item*>(entities.back().get());
           set_grid(item);
-          dynamic_storage.emplace_back(entity_type_render_precedence[item->type], item);
+          grid_storage.emplace_back(entity_type_render_precedence[item->type], item);
         }
         break;
 
@@ -203,11 +273,12 @@ void Environment::initialize_grid() {
           entities.emplace_back(std::make_unique<Item>(EntityType::power_pellet, location, config.power_pellet_points));
           Item *item = static_cast<Item*>(entities.back().get());
           set_grid(item);
-          dynamic_storage.emplace_back(entity_type_render_precedence[item->type], item);
+          grid_storage.emplace_back(entity_type_render_precedence[item->type], item);
         }
         break;
 
         case entity_type_to_char[EntityType::pacman]:
+          _initial_pacman_location = location;
           pacman->set(location, default_movement_direction[pacman->type]);
           set_grid(pacman.get());
           break;
@@ -251,29 +322,45 @@ void Environment::assign_state_grid_from_grid() {
   }
 }
 
-void Environment::update_score(const Location &location) {
-  Entity *entity = grid.get(location);
-  if (entity == nullptr)
-    return;
-  if (entity->type == EntityType::pellet or entity->type == EntityType::power_pellet) {
-    Item *item = static_cast<Item*>(entity);
-    state.score += item->points;
-    
-    // TODO: This has been hardcoded as of now. Find a better way to do this.
-    i32 index = -1;
-    for (i32 i = 0; i < (i32)dynamic_storage.size(); ++i) {
-      auto &[_, entity] = dynamic_storage[i];
-      if (entity == item) {
-        index = i;
-        break;
-      }
-    }
-    if (index != -1) {
-      dynamic_storage.erase(dynamic_storage.begin() + index);
-    }
-    else
-      throw std::runtime_error("This should not be possible.");
-  }
+void Environment::restore_original_state() {
+  unset_grid(pacman.get());
+  unset_grid(blinky.get());
+  unset_grid(pinky.get());
+  unset_grid(inky.get());
+  unset_grid(clyde.get());
+  
+  grid_storage.erase(std::find_if(grid_storage.begin(), grid_storage.end(), [&] (auto &x) { return x.second == pacman.get(); }));
+  grid_storage.erase(std::find_if(grid_storage.begin(), grid_storage.end(), [&] (auto &x) { return x.second == blinky.get(); }));
+  grid_storage.erase(std::find_if(grid_storage.begin(), grid_storage.end(), [&] (auto &x) { return x.second == pinky.get(); }));
+  grid_storage.erase(std::find_if(grid_storage.begin(), grid_storage.end(), [&] (auto &x) { return x.second == inky.get(); }));
+  grid_storage.erase(std::find_if(grid_storage.begin(), grid_storage.end(), [&] (auto &x) { return x.second == clyde.get(); }));
+
+  pacman = std::make_unique<Pacman>(_initial_pacman_location, default_movement_direction[EntityType::pacman]);
+  blinky = std::make_unique<Blinky>(config.blinky_config);
+  pinky  = std::make_unique<Pinky>(config.pinky_config, config.pinky_target_offset);
+  inky   = std::make_unique<Inky>(config.inky_config);
+  clyde  = std::make_unique<Clyde>(config.clyde_config, config.clyde_target_switch_distance);
+
+  grid_storage.emplace_back(entity_type_render_precedence[pacman->type], pacman.get());
+  grid_storage.emplace_back(entity_type_render_precedence[blinky->type], blinky.get());
+  grid_storage.emplace_back(entity_type_render_precedence[pinky->type], pinky.get());
+  grid_storage.emplace_back(entity_type_render_precedence[inky->type], inky.get());
+  grid_storage.emplace_back(entity_type_render_precedence[clyde->type], clyde.get());
+
+  std::sort(grid_storage.begin(), grid_storage.end());
+
+  set_grid(pacman.get());
+  set_grid(blinky.get());
+  set_grid(pinky.get());
+  set_grid(inky.get());
+  set_grid(clyde.get());
+}
+
+void Environment::handle_pacman_death() {
+  state.lives -= 1;
+  if (state.lives <= 0)
+    state.completed = true;
+  restore_original_state();
 }
 
 void Environment::sync_ghost_config() {
