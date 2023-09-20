@@ -4,7 +4,7 @@
 
 #include "environment.hpp"
 
-i32 sleep_ms = 200;
+i32 sleep_ms = 100;
 Config config = {
   .rows = 21,
   .cols = 20,
@@ -12,12 +12,12 @@ Config config = {
   .map = {
     "###################",
     "#........#........#",
-    "#+##.###.#.###.##+#",
-    "#.................#",
+    "#@##.###.#.###.##@#",
+    "#........0........#",
     "#.##.#.#####.#.##.#",
     "#....#...#...#....#",
     "####.###.#.###.####",
-    "####.#...0...#.####",
+    "####.#.......#.####",
     "####.#.##G##.#.####",
     "#......#123#......#",
     "####.#.#####.#.####",
@@ -25,7 +25,7 @@ Config config = {
     "####.#.#####.#.####",
     "#........#........#",
     "#.##.###.#.###.##.#",
-    "#+.#...........#.+#",
+    "#@.#...........#.@#",
     "##.#.#.#####.#.#.##",
     "#....#...#...#....#",
     "#.######.#.######.#",
@@ -35,7 +35,7 @@ Config config = {
 };
 
 State step(Environment &e, const MovementDirection &direction) {
-  system("clear");
+  std::ignore = system("clear");
   State state = e.step(direction);
   // State state = e.step(MovementDirection::none);  
   e.render(RenderMode::stdout);
@@ -46,24 +46,18 @@ State step(Environment &e, const MovementDirection &direction) {
 int main() {
   // srand(time(0));
   Environment e(config);
-  State state = {
-    .completed = false,
-    .step_index = 0,
-  };
+  State state = {};
 
   std::vector <MovementDirection> moves = {
     MovementDirection::left, MovementDirection::up, MovementDirection::right, MovementDirection::down
   };
-  int index = 0;
 
-  system("clear");
+  std::ignore = system("clear");
   e.render(RenderMode::stdout);
   std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
   
-  while (not state.completed) {
-    // state = step(e, moves[index++ % moves.size()]);
+  while (not state.completed) 
     state = step(e, moves[rand() % moves.size()]);
-  }
 
   return 0;
 }

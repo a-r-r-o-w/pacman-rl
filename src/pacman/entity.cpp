@@ -72,11 +72,20 @@ void Ghost::set_corner(const Location &corner) {
 }
 
 void Ghost::set_mode(const GhostMode &mode) {
-  if (config.mode == mode)
+  if (config.mode == mode) {
+    if (config.mode == GhostMode::freight)
+      config.step_index = 0;
     return;
+  }
+  
+  // Ignore mode change if target is freight but the ghost is inside house
+  if (mode == GhostMode::freight and config.mode == GhostMode::house)
+    return;
+  
   if (config.mode == GhostMode::chase or config.mode == GhostMode::scatter)
     direction = opposite_direction[direction];
   config.mode = mode;
+  config.step_index = 0;
 }
 
 Blinky::Blinky(GhostConfig config):

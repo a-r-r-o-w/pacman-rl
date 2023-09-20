@@ -48,7 +48,7 @@ inline constexpr char entity_type_to_char[] = {
   [EntityType::wall]         = '#',
   [EntityType::gate]         = 'G',
   [EntityType::pellet]       = '.',
-  [EntityType::power_pellet] = '+',
+  [EntityType::power_pellet] = '@',
 };
 
 inline constexpr i32 entity_type_render_precedence[] = {

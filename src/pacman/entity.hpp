@@ -9,6 +9,10 @@
 struct Location {
   i32 x = -1;
   i32 y = -1;
+
+  friend bool operator==(const Location& lhs, const Location& rhs) {
+    return lhs.x == rhs.x && lhs.y == rhs.y;
+  }
 };
 
 struct GhostConfig {

@@ -7,9 +7,10 @@
 #include "types.hpp"
 
 struct State {
-  bool completed;
   i32 step_index;
   i32 score;
+  i32 lives;
+  bool completed;
   std::vector <std::string> grid;
 };
 

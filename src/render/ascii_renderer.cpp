@@ -3,7 +3,7 @@
 #include "ascii_renderer.hpp"
 
 void AsciiRenderer::render(const State &state) const {
-  std::cout << "Hello, World!" << '\n';
+  std::cout << "Lives: " << state.lives << '\n';
   std::cout << " Step: " << state.step_index << '\n';
   std::cout << "Score: " << state.score << "\n\n";
 
