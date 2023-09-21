@@ -104,8 +104,8 @@ Location Blinky::get_target(Pacman* pacman) {
     case GhostMode::scatter:
       return config.corner;
     
-    case GhostMode::freight: /* TODO */ return config.corner;
-    case GhostMode::eaten: /* TODO */ return config.corner;
+    case GhostMode::freight: return config.corner;
+    case GhostMode::eaten: return config.corner;
     
     case GhostMode::house:
       return config.initial_location;
@@ -135,8 +135,8 @@ Location Pinky::get_target(Pacman* pacman) {
     case GhostMode::scatter:
       return config.corner;
     
-    case GhostMode::freight: /* TODO */ return config.corner;
-    case GhostMode::eaten: /* TODO */ return config.corner;
+    case GhostMode::freight: return config.corner;
+    case GhostMode::eaten: return config.corner;
     
     case GhostMode::house:
       return config.initial_location;
@@ -167,8 +167,8 @@ Location Inky::get_target(Pacman* pacman, Blinky* blinky) {
     case GhostMode::scatter:
       return config.corner;
     
-    case GhostMode::freight: /* TODO */ return config.corner;
-    case GhostMode::eaten: /* TODO */ return config.corner;
+    case GhostMode::freight: return config.corner;
+    case GhostMode::eaten: return config.corner;
 
     case GhostMode::house:
       return config.initial_location;
@@ -199,8 +199,8 @@ Location Clyde::get_target(Pacman* pacman) {
     case GhostMode::scatter:
       return config.corner;
     
-    case GhostMode::freight: /* TODO */ return config.corner;
-    case GhostMode::eaten: /* TODO */ return config.corner;
+    case GhostMode::freight: return config.corner;
+    case GhostMode::eaten: return config.corner;
 
     case GhostMode::house:
       return config.initial_location;

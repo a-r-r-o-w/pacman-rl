@@ -73,6 +73,7 @@ struct Config {
 
   // Pacman specific attributes
   i32 pacman_lives = 3;
+  i32 score_per_ghost_eaten = 200;
   
   // Ghost specific attributes
   i32 pinky_target_offset = 4;
@@ -102,7 +103,7 @@ class Environment {
     
     AsciiRenderer ascii_renderer;
 
-    Location _initial_pacman_location;
+    Location initial_pacman_location = {};
 
     using Step = std::pair <Location, MovementDirection>;
   
@@ -115,8 +116,7 @@ class Environment {
   
   private:
     Step perform_pacman_step(const MovementDirection &direction);
-    Step perform_ghost_step(Ghost* ghost, Location target);
-    void restore_original_state();
+    Step perform_ghost_step(Ghost *ghost, Location target);
     void handle_pacman_death();
 
     bool is_valid_pacman_move(const Location &location);
