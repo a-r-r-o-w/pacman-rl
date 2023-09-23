@@ -108,25 +108,426 @@ class Environment {
     using Step = std::pair <Location, MovementDirection>;
   
   public:  
-    Environment(const Config &c);
-    ~Environment();
+    Environment(const Config &c):
+      config(c),
+      state({
+        .step_index = 0,
+        .score = 0,
+        .lives = config.pacman_lives,
+        .completed = false,
+        .grid = std::vector <std::string> (config.rows, std::string(config.cols, ' ')),
+      }),
+      grid(config.rows, config.cols) {
+      sync_ghost_config();
 
-    void render(const RenderMode &mode = RenderMode::none);
-    State step(const MovementDirection &direction);
+      pacman = std::make_unique<Pacman>(Location{}, default_movement_direction[EntityType::pacman]);
+      blinky = std::make_unique<Blinky>(config.blinky_config);
+      pinky  = std::make_unique<Pinky>(config.pinky_config, config.pinky_target_offset);
+      inky   = std::make_unique<Inky>(config.inky_config);
+      clyde  = std::make_unique<Clyde>(config.clyde_config, config.clyde_target_switch_distance);
+      grid_storage.emplace_back(entity_type_render_precedence[pacman->type], pacman.get());
+      grid_storage.emplace_back(entity_type_render_precedence[blinky->type], blinky.get());
+      grid_storage.emplace_back(entity_type_render_precedence[pinky->type], pinky.get());
+      grid_storage.emplace_back(entity_type_render_precedence[inky->type], inky.get());
+      grid_storage.emplace_back(entity_type_render_precedence[clyde->type], clyde.get());
+
+      initialize_grid();
+      std::sort(grid_storage.begin(), grid_storage.end());
+      assign_state_grid_from_grid();
+    }
+
+    ~Environment()
+    { }
+
+    void render(const RenderMode &mode = RenderMode::none) {
+      if (mode == RenderMode::stdout)
+        ascii_renderer.render(state);
+      else
+        throw std::runtime_error("Only RenderMode::stdout support for now!");
+    }
+    
+    State step(const MovementDirection &direction) {
+      const auto blinky_target = blinky->get_target(pacman.get());
+      const auto pinky_target  = pinky->get_target(pacman.get());
+      const auto inky_target   = inky->get_target(pacman.get(), blinky.get());
+      const auto clyde_target  = clyde->get_target(pacman.get());
+      
+      auto [pacman_location, pacman_direction] = perform_pacman_step(direction);
+      auto [blinky_location, blinky_direction] = perform_ghost_step(blinky.get(), blinky_target);
+      auto [pinky_location, pinky_direction]   = perform_ghost_step(pinky.get(), pinky_target);
+      auto [inky_location, inky_direction]     = perform_ghost_step(inky.get(), inky_target);
+      auto [clyde_location, clyde_direction]   = perform_ghost_step(clyde.get(), clyde_target);
+      bool pacman_should_step = true;
+      bool blinky_should_step = true;
+      bool pinky_should_step = true;
+      bool inky_should_step = true;
+      bool clyde_should_step = true;
+
+      if (pacman_location == blinky_location or pacman_location == pinky_location or
+          pacman_location == inky_location or pacman_location == clyde_location) {
+        handle_pacman_death();
+        pacman_should_step = false;
+        blinky_should_step = false;
+        pinky_should_step = false;
+        inky_should_step = false;
+        clyde_should_step = false;
+      }
+      else {
+        Entity *entity = grid.get(pacman_location);
+        
+        // If there is no existing entity at this cell, there is nothing to update as positions
+        // are handled elsewhere
+        if (entity == nullptr)
+          ;
+        
+        // Handle score update and activating power pellet mode based on entity type
+        else if (entity->type == EntityType::pellet or entity->type == EntityType::power_pellet) {
+          Item *item = static_cast<Item*>(entity);
+          state.score += item->points;
+
+          if (item->type == EntityType::power_pellet) {
+            blinky->set_mode(GhostMode::freight);
+            pinky->set_mode(GhostMode::freight);
+            inky->set_mode(GhostMode::freight);
+            clyde->set_mode(GhostMode::freight);
+          }
+          
+          // TODO: Find a better way to do this
+          i32 index = -1;
+          for (i32 i = 0; i < (i32)grid_storage.size(); ++i) {
+            auto &[_, entity] = grid_storage[i];
+            if (entity == item) {
+              index = i;
+              break;
+            }
+          }
+          
+          if (index != -1)
+            grid_storage.erase(grid_storage.begin() + index);
+          else
+            throw std::runtime_error("This should not be possible.");
+        }
+
+        // Handle collision with ghost based on current ghost mode.
+        // If ghost is in chase/scatter mode, pacman loses a life.
+        // If ghost is in freight mode, pacman eats it and gets extra points while also sending it back inside the house.
+        else if (
+          entity->type == EntityType::blinky or entity->type == EntityType::pinky or
+          entity->type == EntityType::inky   or entity->type == EntityType::clyde
+        ) {
+          Ghost *ghost = static_cast<Ghost*>(entity);
+          if (ghost->config.mode == GhostMode::chase or ghost->config.mode == GhostMode::scatter) {
+            handle_pacman_death();
+            pacman_should_step = false;
+            blinky_should_step = false;
+            pinky_should_step = false;
+            inky_should_step = false;
+            clyde_should_step = false;
+          }
+          else if (ghost->config.mode == GhostMode::freight) {
+            state.score += config.score_per_ghost_eaten;
+            ghost->set(blinky->config.initial_location, ghost->config.initial_direction);
+            ghost->set_mode(GhostMode::scatter);
+            switch (ghost->type) {
+              case EntityType::blinky: blinky_should_step = false; break;
+              case EntityType::pinky: pinky_should_step = false; break;
+              case EntityType::inky: inky_should_step = false; break;
+              case EntityType::clyde: clyde_should_step = false; break;
+              default: __builtin_unreachable();
+            }
+          }
+          else
+            throw std::runtime_error("This should not beeee possible.");
+        }
+      }
+
+      for (auto &[_, entity]: grid_storage)
+        unset_grid(entity);
+
+      if (pacman_should_step) pacman->set(pacman_location, pacman_direction);
+      if (blinky_should_step) blinky->step(blinky_location, blinky_direction);
+      if (pinky_should_step) pinky->step(pinky_location, pinky_direction);
+      if (inky_should_step) inky->step(inky_location, inky_direction);
+      if (clyde_should_step) clyde->step(clyde_location, clyde_direction);
+
+      for (auto &[_, entity]: grid_storage)
+        set_grid(entity);
+
+      state.step_index += 1;
+      if (state.step_index >= config.max_episode_steps)
+        state.completed = true;
+      
+      assign_state_grid_from_grid();
+      
+      return state;
+    }
   
   private:
-    Step perform_pacman_step(const MovementDirection &direction);
-    Step perform_ghost_step(Ghost *ghost, Location target);
-    void handle_pacman_death();
+    Step perform_pacman_step(const MovementDirection &direction) {
+      i32 nx = pacman->location.x + movement_direction_delta_x[direction];
+      i32 ny = pacman->location.y + movement_direction_delta_y[direction];
 
-    bool is_valid_pacman_move(const Location &location);
-    bool is_valid_ghost_move(Ghost *ghost, const Location &location);
+      if (is_valid_pacman_move({nx, ny}))
+        return {Location{nx, ny}, direction};
+      
+      return {Location{pacman->location.x, pacman->location.y}, pacman->direction};
+    }
 
-    void initialize_grid();
-    void assign_state_grid_from_grid();
-    void sync_ghost_config();
-    void unset_grid(Entity *entity);
-    void set_grid(Entity *entity);
+    Step perform_ghost_step(Ghost *ghost, Location target) {
+      if (ghost->config.mode == GhostMode::house)
+        return {ghost->location, MovementDirection::none};
+      
+      // TODO: Blinky's initial position is used as the target when a ghost moves out of the
+      // house. This is not the correct behaviour since Blinky could start from any position
+      // on an arbitrary map. Ideally, some position next to the gate should be used as target.
+      if (ghost->house_state_updated) {
+        if (ghost->location.x == blinky->config.initial_location.x and ghost->location.y == blinky->config.initial_location.y)
+          ghost->house_state_updated = false;
+        target = blinky->config.initial_location;
+      }
+
+      if (ghost->config.mode == GhostMode::freight) {
+        // TODO: Here, it is hardcoded that if the ghost is in freight mode, updates
+        // will happen every 2 steps. Think of the correct way of handling this.
+        if (ghost->config.step_index % 2 == 0)
+          return {ghost->location, ghost->direction};
+      }
+      
+      i32 best_x = ghost->location.x, best_y = ghost->location.y;
+      i32 best_distance = ghost->config.mode != GhostMode::freight ? i32_inf : -i32_inf;
+      MovementDirection best_direction = ghost->direction;
+      bool has_valid_move = false;
+      auto best_criterion = [&] (i32 x, i32 y) {
+        if (ghost->config.mode != GhostMode::freight)
+          return x < y;
+        return x > y;
+      };
+
+      for (const MovementDirection &direction: movement_direction_precedence) {
+      // for (const MovementDirection &direction: legal_ghost_movement_direction[ghost->direction]) {
+        if (direction == opposite_direction[ghost->direction])
+          continue;
+        
+        i32 nx = ghost->location.x + movement_direction_delta_x[direction];
+        i32 ny = ghost->location.y + movement_direction_delta_y[direction];
+
+        if (is_valid_ghost_move(ghost, {nx, ny})) {
+          has_valid_move = true;
+          i32 distance = manhattan_distance(nx, ny, target.x, target.y);
+          if (best_criterion(distance, best_distance)) {
+            best_distance = distance;
+            best_x = nx;
+            best_y = ny;
+            best_direction = direction;
+          }
+        }
+      }
+
+      if (not has_valid_move) {
+        MovementDirection direction = opposite_direction[ghost->direction];
+        i32 nx = ghost->location.x + movement_direction_delta_x[direction];
+        i32 ny = ghost->location.y + movement_direction_delta_y[direction];
+
+        if (is_valid_ghost_move(ghost, {nx, ny})) {
+          i32 distance = manhattan_distance(nx, ny, target.x, target.y);
+          if (best_criterion(distance, best_distance)) {
+            best_x = nx;
+            best_y = ny;
+            best_direction = direction;
+          }
+        }
+      }
+
+      return {Location{best_x, best_y}, best_direction};
+    }
+
+    void handle_pacman_death() {
+      state.lives -= 1;
+      
+      if (state.lives <= 0)
+        state.completed = true;
+      
+      unset_grid(pacman.get());
+      unset_grid(blinky.get());
+      unset_grid(pinky.get());
+      unset_grid(inky.get());
+      unset_grid(clyde.get());
+      
+      grid_storage.erase(std::find_if(grid_storage.begin(), grid_storage.end(), [&] (auto &x) { return x.second == pacman.get(); }));
+      grid_storage.erase(std::find_if(grid_storage.begin(), grid_storage.end(), [&] (auto &x) { return x.second == blinky.get(); }));
+      grid_storage.erase(std::find_if(grid_storage.begin(), grid_storage.end(), [&] (auto &x) { return x.second == pinky.get(); }));
+      grid_storage.erase(std::find_if(grid_storage.begin(), grid_storage.end(), [&] (auto &x) { return x.second == inky.get(); }));
+      grid_storage.erase(std::find_if(grid_storage.begin(), grid_storage.end(), [&] (auto &x) { return x.second == clyde.get(); }));
+
+      bool is_blinky_in_house = blinky->config.mode == GhostMode::house;
+      bool is_pinky_in_house = pinky->config.mode == GhostMode::house;
+      bool is_inky_in_house = inky->config.mode == GhostMode::house;
+      bool is_clyde_in_house = clyde->config.mode == GhostMode::house;
+
+      pacman = std::make_unique<Pacman>(initial_pacman_location, default_movement_direction[EntityType::pacman]);
+      blinky = std::make_unique<Blinky>(config.blinky_config);
+      pinky  = std::make_unique<Pinky>(config.pinky_config, config.pinky_target_offset);
+      inky   = std::make_unique<Inky>(config.inky_config);
+      clyde  = std::make_unique<Clyde>(config.clyde_config, config.clyde_target_switch_distance);
+
+      if (not is_blinky_in_house) blinky->config.step_index = blinky->config.house_steps;
+      if (not is_pinky_in_house) pinky->config.step_index = pinky->config.house_steps;
+      if (not is_inky_in_house) inky->config.step_index = inky->config.house_steps;
+      if (not is_clyde_in_house) clyde->config.step_index = clyde->config.house_steps;
+
+      grid_storage.emplace_back(entity_type_render_precedence[pacman->type], pacman.get());
+      grid_storage.emplace_back(entity_type_render_precedence[blinky->type], blinky.get());
+      grid_storage.emplace_back(entity_type_render_precedence[pinky->type], pinky.get());
+      grid_storage.emplace_back(entity_type_render_precedence[inky->type], inky.get());
+      grid_storage.emplace_back(entity_type_render_precedence[clyde->type], clyde.get());
+
+      std::sort(grid_storage.begin(), grid_storage.end());
+    }
+
+    bool is_valid_pacman_move(const Location &location) {
+      Entity* entity = grid.get(location);
+      return (entity == nullptr or (entity->type != EntityType::wall and entity->type != EntityType::gate));
+    }
+
+    bool is_valid_ghost_move(Ghost *ghost, const Location &location) {
+      Entity* entity = grid.get(location);
+      if (entity == nullptr)
+        return true;
+      if (entity->type == EntityType::gate)
+        return ghost->house_state_updated;
+      return entity->type != EntityType::wall;
+    }
+
+    void initialize_grid() {
+      Location location;
+      for (i32 x = 0; x < config.rows; ++x) {
+        location.x = x;
+        for (i32 y = 0; y < config.cols; ++y) {
+          location.y = y;
+          char c = config.map[x][y];
+
+          switch(c) {
+            case entity_type_to_char[EntityType::wall]: {
+              entities.emplace_back(std::make_unique<Wall>(location));
+              Wall *wall = static_cast<Wall*>(entities.back().get());
+              set_grid(wall);
+              grid_storage.emplace_back(entity_type_render_precedence[wall->type], wall);
+            }
+            break;
+
+            case entity_type_to_char[EntityType::gate]: {
+              entities.emplace_back(std::make_unique<Gate>(location));
+              Gate *gate = static_cast<Gate*>(entities.back().get());
+              set_grid(gate);
+              grid_storage.emplace_back(entity_type_render_precedence[gate->type], gate);
+            }
+            break;
+
+            case entity_type_to_char[EntityType::pellet]: {
+              entities.emplace_back(std::make_unique<Item>(EntityType::pellet, location, config.pellet_points));
+              Item *item = static_cast<Item*>(entities.back().get());
+              set_grid(item);
+              grid_storage.emplace_back(entity_type_render_precedence[item->type], item);
+            }
+            break;
+
+            case entity_type_to_char[EntityType::power_pellet]: {
+              entities.emplace_back(std::make_unique<Item>(EntityType::power_pellet, location, config.power_pellet_points));
+              Item *item = static_cast<Item*>(entities.back().get());
+              set_grid(item);
+              grid_storage.emplace_back(entity_type_render_precedence[item->type], item);
+            }
+            break;
+
+            case entity_type_to_char[EntityType::pacman]:
+              initial_pacman_location = location;
+              pacman->set(location, default_movement_direction[pacman->type]);
+              set_grid(pacman.get());
+              break;
+            
+            case entity_type_to_char[EntityType::blinky]:
+              set_grid(blinky.get());
+              break;
+            
+            case entity_type_to_char[EntityType::pinky]:
+              set_grid(pinky.get());
+              break;
+            
+            case entity_type_to_char[EntityType::inky]:
+              set_grid(inky.get());
+              break;
+            
+            case entity_type_to_char[EntityType::clyde]:
+              set_grid(clyde.get());
+              break;
+            
+            default:
+              break;
+          }
+        }
+      }
+    }
+    
+    void assign_state_grid_from_grid() {
+      Location location;
+        
+      for (i32 x = 0; x < config.rows; ++x) {
+        location.x = x;
+        for (i32 y = 0; y < config.cols; ++y) {
+          location.y = y;
+          Entity* entity = grid.get(location);
+          if (entity == nullptr)
+            state.grid[x][y] = ' ';
+          else
+            state.grid[x][y] = entity_type_to_char[entity->type];
+        }
+      }
+    }
+
+    void sync_ghost_config() {
+      config.blinky_config.corner = Location{-2, config.cols - 2};
+      config.pinky_config.corner  = Location{-2, +2};
+      config.inky_config.corner   = Location{config.rows + 1, config.cols - 1};
+      config.clyde_config.corner  = Location{config.rows + 1, +1};
+
+      Location location;
+      for (i32 x = 0; x < config.rows; ++x) {
+        location.x = x;
+        for (i32 y = 0; y < config.cols; ++y) {
+          location.y = y;
+          char c = config.map[x][y];
+
+          switch(c) {
+            case entity_type_to_char[EntityType::blinky]:
+              config.blinky_config.initial_location = location;
+              break;
+            
+            case entity_type_to_char[EntityType::pinky]:
+              config.pinky_config.initial_location = location;
+              break;
+            
+            case entity_type_to_char[EntityType::inky]:
+              config.inky_config.initial_location = location;
+              break;
+            
+            case entity_type_to_char[EntityType::clyde]:
+              config.clyde_config.initial_location = location;
+              break;
+            
+            default:
+              break;
+          }
+        }
+      }
+    }
+
+    void unset_grid(Entity *entity) {
+      grid.unset(entity->location);
+    }
+
+    void set_grid(Entity *entity) {
+      grid.set(entity->location, entity);
+    }
 };
 
 #endif // HEADER_ENVIRONMENT_H

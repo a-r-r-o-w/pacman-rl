@@ -14,16 +14,36 @@ class Grid {
     std::vector <Entity*> map;
   
   private:
-    i32 get_index(const Location &location);
+    i32 get_index(const Location &location) {
+      return location.x * cols + location.y;
+    }
   
   public:
-    Grid(i32 rows, i32 cols);
-    ~Grid();
+    Grid(i32 rows, i32 cols):
+      rows(rows),
+      cols(cols) {
+      map.resize(rows * cols, nullptr);
+    }
 
-    void reset();
-    Entity* get(const Location &location);
-    void set(const Location &location, Entity* e);
-    void unset(const Location &location);
+    ~Grid() {
+      map.clear();
+    }
+
+    void reset() {
+      map.assign(map.size(), nullptr);
+    }
+
+    Entity* get(const Location &location) {
+      return map[get_index(location)];
+    }
+
+    void set(const Location &location, Entity *e) {
+      map[get_index(location)] = e;
+    }
+
+    void unset(const Location &location) {
+      map[get_index(location)] = nullptr;
+    }
 };
 
 #endif // PACMAN_GRID_H

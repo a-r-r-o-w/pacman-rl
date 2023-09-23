@@ -4,10 +4,6 @@ include_directories(./)
 
 add_executable(
   pacman-rl
-    ./render/ascii_renderer.cpp
-    ./pacman/entity.cpp
-    ./pacman/grid.cpp
-    ./environment.cpp
     ./main.cpp
 )
 
