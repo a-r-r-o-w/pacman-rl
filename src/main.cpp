@@ -1,14 +1,16 @@
 #include <iostream>
 #include <cstdlib>
+#include <ostream>
 #include <thread>
 
 #include "environment.hpp"
+#include "state.hpp"
 
-i32 sleep_ms = 50;
+i32 sleep_ms = 0;
 Config config = {
   .rows = 21,
   .cols = 20,
-  .max_episode_steps = 200,
+  .max_episode_steps = 1000,
   .map = {
     "###################",
     "#........#........#",
@@ -31,27 +33,16 @@ Config config = {
     "#.######.#.######.#",
     "#.................#",
     "###################",
-  }
+  },
+  .pacman_lives = 20,
 };
-
-State step(Environment &e, const MovementDirection &direction) {
-  std::ignore = system("clear");
-  State state = e.step(direction);
-  // State state = e.step(MovementDirection::none);  
-  e.render(RenderMode::stdout);
-  std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
-  return state;
-}
 
 int main() {
   std::ios::sync_with_stdio(false);
   std::cin.tie(nullptr);
-  
-  // srand(time(0));
+
+  srand(time(0));
   Environment e(config);
-  Environment e2(config);
-  Environment e3 = std::move(e2);
-  State state = {};
 
   std::vector <MovementDirection> moves = {
     MovementDirection::left, MovementDirection::up, MovementDirection::right, MovementDirection::down
@@ -60,9 +51,24 @@ int main() {
   std::ignore = system("clear");
   e.render(RenderMode::stdout);
   std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
+
+  State state = e.reset();
+  int episodes = 100;
+
+  for (int i = 0; i < episodes; ++i) {
+    state = e.reset();
+    while (not state.completed)
+      state = e.step(moves[rand() % 4]);
+    std::cout << "episode " << i << " score: " << state.score << ", steps: " << state.step_index << std::endl;
+  }
   
-  while (not state.completed) 
-    state = step(e, moves[rand() % moves.size()]);
+  // while (not state.completed) {
+  //   std::ignore = system("clear");
+  //   state = e.step(moves[rand() % 4]);
+  //   e.render(RenderMode::stdout);
+  //   std::flush(std::cout);
+  //   std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
+  // }
 
   return 0;
 }

@@ -106,39 +106,15 @@ class Environment {
     Location initial_pacman_location = {};
 
     using Step = std::pair <Location, MovementDirection>;
+
   
   public:  
-    // TODO
-    void reset() { }
-    void pretty() { }
-    void close() { }
+    friend std::string pretty_environment(const Environment &env);
 
     Environment(const Config &c):
       config(c),
-      state({
-        .step_index = 0,
-        .score = 0,
-        .lives = config.pacman_lives,
-        .completed = false,
-        .grid = std::vector <std::string> (config.rows, std::string(config.cols, ' ')),
-      }),
       grid(config.rows, config.cols) {
-      sync_ghost_config();
-
-      pacman = std::make_unique<Pacman>(Location{}, default_movement_direction[EntityType::pacman]);
-      blinky = std::make_unique<Blinky>(config.blinky_config);
-      pinky  = std::make_unique<Pinky>(config.pinky_config, config.pinky_target_offset);
-      inky   = std::make_unique<Inky>(config.inky_config);
-      clyde  = std::make_unique<Clyde>(config.clyde_config, config.clyde_target_switch_distance);
-      grid_storage.emplace_back(entity_type_render_precedence[pacman->type], pacman.get());
-      grid_storage.emplace_back(entity_type_render_precedence[blinky->type], blinky.get());
-      grid_storage.emplace_back(entity_type_render_precedence[pinky->type], pinky.get());
-      grid_storage.emplace_back(entity_type_render_precedence[inky->type], inky.get());
-      grid_storage.emplace_back(entity_type_render_precedence[clyde->type], clyde.get());
-
-      initialize_grid();
-      std::sort(grid_storage.begin(), grid_storage.end());
-      assign_state_grid_from_grid();
+      reset();
     }
 
     Environment(Environment &&other):
@@ -152,7 +128,8 @@ class Environment {
       clyde(std::move(other.clyde)),
       entities(std::move(other.entities)),
       grid_storage(std::move(other.grid_storage)),
-      ascii_renderer(std::move(other.ascii_renderer))
+      ascii_renderer(std::move(other.ascii_renderer)),
+      initial_pacman_location(std::move(other.initial_pacman_location))
     { }
 
     Environment& operator=(Environment &&other) {
@@ -180,6 +157,39 @@ class Environment {
         ascii_renderer.render(state);
       else
         throw std::runtime_error("Only RenderMode::stdout support for now!");
+    }
+
+    State reset() {
+      state.step_index = 0;
+      state.score = 0;
+      state.lives = config.pacman_lives;
+      state.completed = false;
+      state.pacman_location = {};
+      state.blinky_location = {};
+      state.pinky_location = {};
+      state.inky_location = {};
+      state.clyde_location = {};
+      state.grid = std::vector <std::string> (config.rows, std::string(config.cols, ' '));
+      
+      sync_ghost_config();
+      grid_storage.clear();
+
+      pacman = std::make_unique<Pacman>(Location{}, default_movement_direction[EntityType::pacman]);
+      blinky = std::make_unique<Blinky>(config.blinky_config);
+      pinky  = std::make_unique<Pinky>(config.pinky_config, config.pinky_target_offset);
+      inky   = std::make_unique<Inky>(config.inky_config);
+      clyde  = std::make_unique<Clyde>(config.clyde_config, config.clyde_target_switch_distance);
+      grid_storage.emplace_back(entity_type_render_precedence[pacman->type], pacman.get());
+      grid_storage.emplace_back(entity_type_render_precedence[blinky->type], blinky.get());
+      grid_storage.emplace_back(entity_type_render_precedence[pinky->type], pinky.get());
+      grid_storage.emplace_back(entity_type_render_precedence[inky->type], inky.get());
+      grid_storage.emplace_back(entity_type_render_precedence[clyde->type], clyde.get());
+
+      initialize_grid();
+      std::sort(grid_storage.begin(), grid_storage.end());
+      update_state();
+      
+      return state;
     }
     
     State step(const MovementDirection &direction) {
@@ -293,7 +303,7 @@ class Environment {
       if (state.step_index >= config.max_episode_steps)
         state.completed = true;
       
-      assign_state_grid_from_grid();
+      update_state();
       
       return state;
     }
@@ -504,7 +514,7 @@ class Environment {
       }
     }
     
-    void assign_state_grid_from_grid() {
+    void update_state() {
       Location location;
         
       for (i32 x = 0; x < config.rows; ++x) {
@@ -518,6 +528,12 @@ class Environment {
             state.grid[x][y] = entity_type_to_char[entity->type];
         }
       }
+
+      state.pacman_location = pacman->location;
+      state.blinky_location = blinky->location;
+      state.pinky_location  = pinky->location;
+      state.inky_location   = inky->location;
+      state.clyde_location  = clyde->location;
     }
 
     void sync_ghost_config() {

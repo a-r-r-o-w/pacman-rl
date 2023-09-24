@@ -6,6 +6,9 @@ build/
 *.so
 *.a
 
+# python
+__pycache__/
+
 # vscode
 .vscode/
 

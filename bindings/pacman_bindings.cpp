@@ -70,27 +70,33 @@ PYBIND11_MODULE(pacman_rl, m) {
 
   py::class_<State>(m, "State")
     .def(py::init<>(), "Default constructor")
-    .def(py::init<i32, i32, i32, bool, std::vector <std::string>>(), "Constructor with all attributes")
     .def_readwrite("step_index", &State::step_index, "Current step index")
     .def_readwrite("score", &State::score, "Current score")
     .def_readwrite("lives", &State::lives, "Current number of lives")
     .def_readwrite("completed", &State::completed, "Whether the episode is completed")
+    .def_readwrite("pacman_location", &State::pacman_location, "Current pacman location")
+    .def_readwrite("blinky_location", &State::blinky_location, "Current blinky location")
+    .def_readwrite("pinky_location", &State::pinky_location, "Current pinky location")
+    .def_readwrite("inky_location", &State::inky_location, "Current inky location")
+    .def_readwrite("clyde_location", &State::clyde_location, "Current clyde location")
     .def_readwrite("grid", &State::grid, "Current grid")
-    .def("__repr__", [](const State &) { return "<pacman_rl.State>"; });
+    .def("__repr__", [](const State &) { return "<pacman_rl.State>"; })
+    .def("pretty", pretty_state);
   
   py::class_<Environment>(m, "Environment")
     .def(py::init<Config>(), "Constructor with config")
     .def("reset", &Environment::reset, "Reset the environment")
     .def("step", &Environment::step, "Perform an action in the environment")
     .def("render", &Environment::render, py::arg("mode") = RenderMode::stdout, "Render the environment")
-    .def("close", &Environment::close, "Close the environment")
-    .def("pretty", &Environment::pretty, "Pretty print the environment")
-    .def("__repr__", [](const Environment &) { return "<pacman_rl.Environment>"; });
+    .def("__repr__", [](const Environment &) { return "<pacman_rl.Environment>"; })
+    .def("pretty", pretty_environment, "Pretty print the environment");
   
   m.def("make_env", &make_env, py::return_value_policy::move, "Creates and returns an environment with the given config");
   
   m.def_submodule("pretty_print")
     .def("pretty_location", pretty_location, "Pretty print a location")
     .def("pretty_ghost_config", pretty_ghost_config, "Pretty print a ghost config")
-    .def("pretty_config", pretty_config, "Pretty print a config");
+    .def("pretty_config", pretty_config, "Pretty print a config")
+    .def("pretty_state", pretty_state, "Pretty print a state")
+    .def("pretty_environment", pretty_environment, "Pretty print an environment");
 };

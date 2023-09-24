@@ -61,4 +61,56 @@ inline std::string pretty_config(const Config &config) {
     "}";
 }
 
+inline std::string pretty_state(const State &state) {
+  std::string result =
+    "pacman_rl.State{\n"
+    "  .step_index = " + std::to_string(state.step_index) + ",\n"
+    "  .score = " + std::to_string(state.score) + ",\n"
+    "  .lives = " + std::to_string(state.lives) + ",\n"
+    "  .completed = " + std::string(state.completed ? "true" : "false") + ",\n"
+    "  .pacman_location = " + pretty_location(state.pacman_location) + ",\n"
+    "  .blinky_location = " + pretty_location(state.blinky_location) + ",\n"
+    "  .pinky_location = " + pretty_location(state.pinky_location) + ",\n"
+    "  .inky_location = " + pretty_location(state.inky_location) + ",\n"
+    "  .clyde_location = " + pretty_location(state.clyde_location) + ",\n"
+    "  .grid = std::vector<std::string>{\n";
+  for (const std::string &row: state.grid)
+    result += "    \"" + row + "\",\n";
+  result +=
+    "  }\n"
+    "}";
+  return result;
+}
+
+// class Environment {
+//   private:
+//     Config config;
+//     State state;
+//     Grid grid;
+    
+//     std::unique_ptr<Pacman> pacman;
+//     std::unique_ptr<Blinky> blinky;
+//     std::unique_ptr<Pinky> pinky;
+//     std::unique_ptr<Inky> inky;
+//     std::unique_ptr<Clyde> clyde;
+//     std::vector<std::unique_ptr<Entity>> entities;
+//     std::vector<std::pair<i32, Entity*>> grid_storage;
+    
+//     AsciiRenderer ascii_renderer;
+
+//     Location initial_pacman_location = {};
+
+inline std::string pretty_environment(const Environment &env) {
+  return
+    "pacman_rl.Environment{\n"
+    "  .config = " + pretty_config(env.config) + ",\n"
+    "  .state = " + pretty_state(env.state) + ",\n"
+    // "  .pacman = " + env.pacman->to_string() + ",\n"
+    // "  .blinky = " + env.blinky->to_string() + ",\n"
+    // "  .pinky = " + env.pinky->to_string() + ",\n"
+    // "  .inky = " + env.inky->to_string() + ",\n"
+    // "  .clyde = " + env.clyde->to_string() + "\n"
+    "}";
+}
+
 #endif // BINDINGS_PRETTY_PRINT_H
