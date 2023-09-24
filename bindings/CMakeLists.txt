@@ -1,4 +1,6 @@
+include_directories(./)
+
 pybind11_add_module(
-  pacman_rl
+  "${PYBIND_BINDING_FILE}"
     ./pacman_bindings.cpp
 )

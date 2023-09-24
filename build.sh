@@ -73,8 +73,11 @@ cd "$BUILD_DIR" || exit
 
 # Build the project
 echo "${BOLD}Configuring and building with CMake...${NORMAL}"
-cmake .. -DCMAKE_BUILD_TYPE="$BUILD_TYPE" -DPYTHON_EXECUTABLE="$(command -v python3)"
+cmake .. -DCMAKE_BUILD_TYPE="$BUILD_TYPE" -DPYTHON_EXECUTABLE="$(command -v python3)" -DCMAKE_EXPORT_COMPILE_COMMANDS=1
 make -j"$NUM_JOBS"
+
+# Generate stubs for the Python module
+# stubgen -m pacman
 
 # Check if the build was successful
 if [ $? -eq 0 ]; then
