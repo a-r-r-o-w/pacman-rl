@@ -2,6 +2,7 @@
 #define PACMAN_CONSTANTS_H
 #pragma once
 
+#include <ostream>
 #include <utility>
 
 #include "types.hpp"
@@ -35,7 +36,6 @@ enum GhostMode {
 };
 
 enum class RenderMode {
-  none,
   stdout,
 };
 
@@ -132,5 +132,20 @@ inline constexpr const char* ghost_mode_to_string[] = {
 
 inline i32 i32_inf = i32(1) << 30;
 inline i64 i64_inf = i64(1) << 30;
+
+inline std::ostream& operator<<(std::ostream& os, const EntityType& entity_type) {
+  os << entity_type_to_char[entity_type];
+  return os;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const MovementDirection& direction) {
+  os << direction_to_string[direction];
+  return os;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const GhostMode& mode) {
+  os << ghost_mode_to_string[mode];
+  return os;
+}
 
 #endif // PACMAN_CONSTANTS_H

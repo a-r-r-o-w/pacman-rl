@@ -2,6 +2,8 @@
 #define PACMAN_ENTITY_H
 #pragma once
 
+#include <ostream>
+#include <string>
 #include <cmath>
 
 #include "pacman/constants.hpp"
@@ -12,8 +14,17 @@ struct Location {
   i32 x = -1;
   i32 y = -1;
 
+  std::string to_string() const {
+    return "(" + std::to_string(x) + ", " + std::to_string(y) + ")";
+  }
+
   friend bool operator==(const Location& lhs, const Location& rhs) {
     return lhs.x == rhs.x && lhs.y == rhs.y;
+  }
+
+  friend std::ostream& operator<<(std::ostream& os, const Location& location) {
+    os << location.to_string();
+    return os;
   }
 };
 

@@ -2,6 +2,7 @@
 #define PACMAN_STATE_H
 #pragma once
 
+#include <string>
 #include <vector>
 
 #include "types.hpp"

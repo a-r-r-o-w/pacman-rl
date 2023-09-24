@@ -44,8 +44,13 @@ State step(Environment &e, const MovementDirection &direction) {
 }
 
 int main() {
+  std::ios::sync_with_stdio(false);
+  std::cin.tie(nullptr);
+  
   // srand(time(0));
   Environment e(config);
+  Environment e2(config);
+  Environment e3 = std::move(e2);
   State state = {};
 
   std::vector <MovementDirection> moves = {

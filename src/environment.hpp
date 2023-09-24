@@ -93,13 +93,13 @@ class Environment {
     State state;
     Grid grid;
     
-    std::unique_ptr <Pacman> pacman;
-    std::unique_ptr <Blinky> blinky;
-    std::unique_ptr <Pinky> pinky;
-    std::unique_ptr <Inky> inky;
-    std::unique_ptr <Clyde> clyde;
-    std::vector <std::unique_ptr <Entity>> entities;
-    std::vector <std::pair <i32, Entity*>> grid_storage;
+    std::unique_ptr<Pacman> pacman;
+    std::unique_ptr<Blinky> blinky;
+    std::unique_ptr<Pinky> pinky;
+    std::unique_ptr<Inky> inky;
+    std::unique_ptr<Clyde> clyde;
+    std::vector<std::unique_ptr<Entity>> entities;
+    std::vector<std::pair<i32, Entity*>> grid_storage;
     
     AsciiRenderer ascii_renderer;
 
@@ -108,6 +108,11 @@ class Environment {
     using Step = std::pair <Location, MovementDirection>;
   
   public:  
+    // TODO
+    void reset() { }
+    void pretty() { }
+    void close() { }
+
     Environment(const Config &c):
       config(c),
       state({
@@ -136,10 +141,41 @@ class Environment {
       assign_state_grid_from_grid();
     }
 
+    Environment(Environment &&other):
+      config(std::move(other.config)),
+      state(std::move(other.state)),
+      grid(std::move(other.grid)),
+      pacman(std::move(other.pacman)),
+      blinky(std::move(other.blinky)),
+      pinky(std::move(other.pinky)),
+      inky(std::move(other.inky)),
+      clyde(std::move(other.clyde)),
+      entities(std::move(other.entities)),
+      grid_storage(std::move(other.grid_storage)),
+      ascii_renderer(std::move(other.ascii_renderer))
+    { }
+
+    Environment& operator=(Environment &&other) {
+      if (this == &other)
+        return *this;
+      config = std::move(other.config);
+      state = std::move(other.state);
+      grid = std::move(other.grid);
+      pacman = std::move(other.pacman);
+      blinky = std::move(other.blinky);
+      pinky = std::move(other.pinky);
+      inky = std::move(other.inky);
+      clyde = std::move(other.clyde);
+      entities = std::move(other.entities);
+      grid_storage = std::move(other.grid_storage);
+      ascii_renderer = std::move(other.ascii_renderer);
+      return *this;
+    }
+
     ~Environment()
     { }
 
-    void render(const RenderMode &mode = RenderMode::none) {
+    void render(const RenderMode &mode) {
       if (mode == RenderMode::stdout)
         ascii_renderer.render(state);
       else
@@ -529,5 +565,11 @@ class Environment {
       grid.set(entity->location, entity);
     }
 };
+
+
+
+inline Environment make_env(const Config &config) {
+  return Environment(config);
+}
 
 #endif // HEADER_ENVIRONMENT_H
