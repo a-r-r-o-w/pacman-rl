@@ -14,17 +14,19 @@
 #include "pacman/grid.hpp"
 #include "pacman/state.hpp"
 #include "pacman/utils.hpp"
+
 #include "render/ascii_renderer.hpp"
+#include "render/graphics_renderer.hpp"
 
 inline GhostConfig default_blinky_config {
   .chase_steps = 30,
   .scatter_steps = 18,
   .freight_steps = 16,
   .house_steps = 0,
-  .initial_direction = default_movement_direction[EntityType::blinky],
+  .initial_direction = default_movement_direction(EntityType::blinky),
   .initial_location = {}, // depends on location in grid
   .corner = {}, // depends on grid size
-  .mode = default_ghost_mode[EntityType::blinky],
+  .mode = default_ghost_mode(EntityType::blinky),
 };
 
 inline GhostConfig default_pinky_config {
@@ -32,10 +34,10 @@ inline GhostConfig default_pinky_config {
   .scatter_steps = 18,
   .freight_steps = 16,
   .house_steps = 20,
-  .initial_direction = default_movement_direction[EntityType::pinky],
+  .initial_direction = default_movement_direction(EntityType::pinky),
   .initial_location = {}, // depends on location in grid
   .corner = {}, // depends on grid size
-  .mode = default_ghost_mode[EntityType::pinky],
+  .mode = default_ghost_mode(EntityType::pinky),
 };
 
 inline GhostConfig default_inky_config {
@@ -43,10 +45,10 @@ inline GhostConfig default_inky_config {
   .scatter_steps = 18,
   .freight_steps = 16,
   .house_steps = 40,
-  .initial_direction = default_movement_direction[EntityType::inky],
+  .initial_direction = default_movement_direction(EntityType::inky),
   .initial_location = {}, // depends on location in grid
   .corner = {}, // depends on grid size
-  .mode = default_ghost_mode[EntityType::inky],
+  .mode = default_ghost_mode(EntityType::inky),
 };
 
 inline GhostConfig default_clyde_config {
@@ -54,10 +56,10 @@ inline GhostConfig default_clyde_config {
   .scatter_steps = 18,
   .freight_steps = 16,
   .house_steps = 60,
-  .initial_direction = default_movement_direction[EntityType::clyde],
+  .initial_direction = default_movement_direction(EntityType::clyde),
   .initial_location = {}, // depends on location in grid
   .corner = {}, // depends on grid size
-  .mode = default_ghost_mode[EntityType::clyde],
+  .mode = default_ghost_mode(EntityType::clyde),
 };
 
 struct Config {
@@ -102,6 +104,7 @@ class Environment {
     std::vector<std::pair<i32, Entity*>> grid_storage;
     
     AsciiRenderer ascii_renderer;
+    GraphicsRenderer graphics_renderer;
 
     Location initial_pacman_location = {};
 
@@ -153,8 +156,10 @@ class Environment {
     { }
 
     void render(const RenderMode &mode) {
-      if (mode == RenderMode::stdout)
+      if (mode == RenderMode::ascii)
         ascii_renderer.render(state);
+      else if (mode == RenderMode::human)
+        graphics_renderer.render(state);
       else
         throw std::runtime_error("Only RenderMode::stdout support for now!");
     }
@@ -174,16 +179,16 @@ class Environment {
       sync_ghost_config();
       grid_storage.clear();
 
-      pacman = std::make_unique<Pacman>(Location{}, default_movement_direction[EntityType::pacman]);
+      pacman = std::make_unique<Pacman>(Location{}, default_movement_direction(EntityType::pacman));
       blinky = std::make_unique<Blinky>(config.blinky_config);
       pinky  = std::make_unique<Pinky>(config.pinky_config, config.pinky_target_offset);
       inky   = std::make_unique<Inky>(config.inky_config);
       clyde  = std::make_unique<Clyde>(config.clyde_config, config.clyde_target_switch_distance);
-      grid_storage.emplace_back(entity_type_render_precedence[pacman->type], pacman.get());
-      grid_storage.emplace_back(entity_type_render_precedence[blinky->type], blinky.get());
-      grid_storage.emplace_back(entity_type_render_precedence[pinky->type], pinky.get());
-      grid_storage.emplace_back(entity_type_render_precedence[inky->type], inky.get());
-      grid_storage.emplace_back(entity_type_render_precedence[clyde->type], clyde.get());
+      grid_storage.emplace_back(entity_type_render_precedence(pacman->type), pacman.get());
+      grid_storage.emplace_back(entity_type_render_precedence(blinky->type), blinky.get());
+      grid_storage.emplace_back(entity_type_render_precedence(pinky->type), pinky.get());
+      grid_storage.emplace_back(entity_type_render_precedence(inky->type), inky.get());
+      grid_storage.emplace_back(entity_type_render_precedence(clyde->type), clyde.get());
 
       initialize_grid();
       std::sort(grid_storage.begin(), grid_storage.end());
@@ -310,8 +315,8 @@ class Environment {
   
   private:
     Step perform_pacman_step(const MovementDirection &direction) {
-      i32 nx = pacman->location.x + movement_direction_delta_x[direction];
-      i32 ny = pacman->location.y + movement_direction_delta_y[direction];
+      i32 nx = pacman->location.x + movement_direction_delta_x(direction);
+      i32 ny = pacman->location.y + movement_direction_delta_y(direction);
 
       if (is_valid_pacman_move({nx, ny}))
         return {Location{nx, ny}, direction};
@@ -351,11 +356,11 @@ class Environment {
 
       for (const MovementDirection &direction: movement_direction_precedence) {
       // for (const MovementDirection &direction: legal_ghost_movement_direction[ghost->direction]) {
-        if (direction == opposite_direction[ghost->direction])
+        if (direction == opposite_direction(ghost->direction))
           continue;
         
-        i32 nx = ghost->location.x + movement_direction_delta_x[direction];
-        i32 ny = ghost->location.y + movement_direction_delta_y[direction];
+        i32 nx = ghost->location.x + movement_direction_delta_x(direction);
+        i32 ny = ghost->location.y + movement_direction_delta_y(direction);
 
         if (is_valid_ghost_move(ghost, {nx, ny})) {
           has_valid_move = true;
@@ -370,9 +375,9 @@ class Environment {
       }
 
       if (not has_valid_move) {
-        MovementDirection direction = opposite_direction[ghost->direction];
-        i32 nx = ghost->location.x + movement_direction_delta_x[direction];
-        i32 ny = ghost->location.y + movement_direction_delta_y[direction];
+        MovementDirection direction = opposite_direction(ghost->direction);
+        i32 nx = ghost->location.x + movement_direction_delta_x(direction);
+        i32 ny = ghost->location.y + movement_direction_delta_y(direction);
 
         if (is_valid_ghost_move(ghost, {nx, ny})) {
           i32 distance = manhattan_distance(nx, ny, target.x, target.y);
@@ -409,23 +414,39 @@ class Environment {
       bool is_pinky_in_house = pinky->config.mode == GhostMode::house;
       bool is_inky_in_house = inky->config.mode == GhostMode::house;
       bool is_clyde_in_house = clyde->config.mode == GhostMode::house;
+      i32 blinky_step_index = blinky->config.step_index;
+      i32 pinky_step_index = pinky->config.step_index;
+      i32 inky_step_index = inky->config.step_index;
+      i32 clyde_step_index = clyde->config.step_index;
 
-      pacman = std::make_unique<Pacman>(initial_pacman_location, default_movement_direction[EntityType::pacman]);
+      pacman = std::make_unique<Pacman>(initial_pacman_location, default_movement_direction(EntityType::pacman));
       blinky = std::make_unique<Blinky>(config.blinky_config);
       pinky  = std::make_unique<Pinky>(config.pinky_config, config.pinky_target_offset);
       inky   = std::make_unique<Inky>(config.inky_config);
       clyde  = std::make_unique<Clyde>(config.clyde_config, config.clyde_target_switch_distance);
 
-      if (not is_blinky_in_house) blinky->config.step_index = blinky->config.house_steps;
-      if (not is_pinky_in_house) pinky->config.step_index = pinky->config.house_steps;
-      if (not is_inky_in_house) inky->config.step_index = inky->config.house_steps;
-      if (not is_clyde_in_house) clyde->config.step_index = clyde->config.house_steps;
+      if (not is_blinky_in_house)
+        blinky->config.step_index = blinky->config.house_steps;
+      else
+        blinky->config.step_index = blinky_step_index;
+      if (not is_pinky_in_house)
+        pinky->config.step_index = pinky->config.house_steps;
+      else
+        pinky->config.step_index = pinky_step_index;
+      if (not is_inky_in_house)
+        inky->config.step_index = inky->config.house_steps;
+      else
+        inky->config.step_index = inky_step_index;
+      if (not is_clyde_in_house)
+        clyde->config.step_index = clyde->config.house_steps;
+      else
+        clyde->config.step_index = clyde_step_index;
 
-      grid_storage.emplace_back(entity_type_render_precedence[pacman->type], pacman.get());
-      grid_storage.emplace_back(entity_type_render_precedence[blinky->type], blinky.get());
-      grid_storage.emplace_back(entity_type_render_precedence[pinky->type], pinky.get());
-      grid_storage.emplace_back(entity_type_render_precedence[inky->type], inky.get());
-      grid_storage.emplace_back(entity_type_render_precedence[clyde->type], clyde.get());
+      grid_storage.emplace_back(entity_type_render_precedence(pacman->type), pacman.get());
+      grid_storage.emplace_back(entity_type_render_precedence(blinky->type), blinky.get());
+      grid_storage.emplace_back(entity_type_render_precedence(pinky->type), pinky.get());
+      grid_storage.emplace_back(entity_type_render_precedence(inky->type), inky.get());
+      grid_storage.emplace_back(entity_type_render_precedence(clyde->type), clyde.get());
 
       std::sort(grid_storage.begin(), grid_storage.end());
     }
@@ -451,59 +472,60 @@ class Environment {
         for (i32 y = 0; y < config.cols; ++y) {
           location.y = y;
           char c = config.map[x][y];
+          EntityType type = char_to_entity_type(c);
 
-          switch(c) {
-            case entity_type_to_char[EntityType::wall]: {
+          switch(type) {
+            case EntityType::wall: {
               entities.emplace_back(std::make_unique<Wall>(location));
               Wall *wall = static_cast<Wall*>(entities.back().get());
               set_grid(wall);
-              grid_storage.emplace_back(entity_type_render_precedence[wall->type], wall);
+              grid_storage.emplace_back(entity_type_render_precedence(wall->type), wall);
             }
             break;
 
-            case entity_type_to_char[EntityType::gate]: {
+            case EntityType::gate: {
               entities.emplace_back(std::make_unique<Gate>(location));
               Gate *gate = static_cast<Gate*>(entities.back().get());
               set_grid(gate);
-              grid_storage.emplace_back(entity_type_render_precedence[gate->type], gate);
+              grid_storage.emplace_back(entity_type_render_precedence(gate->type), gate);
             }
             break;
 
-            case entity_type_to_char[EntityType::pellet]: {
+            case EntityType::pellet: {
               entities.emplace_back(std::make_unique<Item>(EntityType::pellet, location, config.pellet_points));
               Item *item = static_cast<Item*>(entities.back().get());
               set_grid(item);
-              grid_storage.emplace_back(entity_type_render_precedence[item->type], item);
+              grid_storage.emplace_back(entity_type_render_precedence(item->type), item);
             }
             break;
 
-            case entity_type_to_char[EntityType::power_pellet]: {
+            case EntityType::power_pellet: {
               entities.emplace_back(std::make_unique<Item>(EntityType::power_pellet, location, config.power_pellet_points));
               Item *item = static_cast<Item*>(entities.back().get());
               set_grid(item);
-              grid_storage.emplace_back(entity_type_render_precedence[item->type], item);
+              grid_storage.emplace_back(entity_type_render_precedence(item->type), item);
             }
             break;
 
-            case entity_type_to_char[EntityType::pacman]:
+            case EntityType::pacman:
               initial_pacman_location = location;
-              pacman->set(location, default_movement_direction[pacman->type]);
+              pacman->set(location, default_movement_direction(pacman->type));
               set_grid(pacman.get());
               break;
             
-            case entity_type_to_char[EntityType::blinky]:
+            case EntityType::blinky:
               set_grid(blinky.get());
               break;
             
-            case entity_type_to_char[EntityType::pinky]:
+            case EntityType::pinky:
               set_grid(pinky.get());
               break;
             
-            case entity_type_to_char[EntityType::inky]:
+            case EntityType::inky:
               set_grid(inky.get());
               break;
             
-            case entity_type_to_char[EntityType::clyde]:
+            case EntityType::clyde:
               set_grid(clyde.get());
               break;
             
@@ -525,7 +547,7 @@ class Environment {
           if (entity == nullptr)
             state.grid[x][y] = ' ';
           else
-            state.grid[x][y] = entity_type_to_char[entity->type];
+            state.grid[x][y] = entity_type_to_char(entity->type);
         }
       }
 
@@ -548,21 +570,22 @@ class Environment {
         for (i32 y = 0; y < config.cols; ++y) {
           location.y = y;
           char c = config.map[x][y];
+          EntityType type = char_to_entity_type(c);
 
-          switch(c) {
-            case entity_type_to_char[EntityType::blinky]:
+          switch(type) {
+            case EntityType::blinky:
               config.blinky_config.initial_location = location;
               break;
             
-            case entity_type_to_char[EntityType::pinky]:
+            case EntityType::pinky:
               config.pinky_config.initial_location = location;
               break;
             
-            case entity_type_to_char[EntityType::inky]:
+            case EntityType::inky:
               config.inky_config.initial_location = location;
               break;
             
-            case entity_type_to_char[EntityType::clyde]:
+            case EntityType::clyde:
               config.clyde_config.initial_location = location;
               break;
             

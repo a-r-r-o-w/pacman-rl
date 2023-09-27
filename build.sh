@@ -73,7 +73,7 @@ cd "$BUILD_DIR" || exit
 
 # Build the project
 echo "${BOLD}Configuring and building with CMake...${NORMAL}"
-cmake .. -DCMAKE_BUILD_TYPE="$BUILD_TYPE" -DPYTHON_EXECUTABLE="$(command -v python3)" -DCMAKE_EXPORT_COMPILE_COMMANDS=1
+cmake .. -DCMAKE_BUILD_TYPE="$BUILD_TYPE" -DPYTHON_EXECUTABLE="$(command -v python3)" -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCUSTOMIZE_BUILD=ON -DWITH_PIC=ON
 make -j"$NUM_JOBS"
 
 # Generate stubs for the Python module

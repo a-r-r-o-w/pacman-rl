@@ -6,10 +6,10 @@
 #include "environment.hpp"
 #include "state.hpp"
 
-i32 sleep_ms = 0;
+i32 sleep_ms = 100;
 Config config = {
   .rows = 21,
-  .cols = 20,
+  .cols = 19,
   .max_episode_steps = 1000,
   .map = {
     "###################",
@@ -49,26 +49,26 @@ int main() {
   };
 
   std::ignore = system("clear");
-  e.render(RenderMode::stdout);
+  e.render(RenderMode::human);
   std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
 
   State state = e.reset();
-  int episodes = 100;
+  // int episodes = 100;
 
-  for (int i = 0; i < episodes; ++i) {
-    state = e.reset();
-    while (not state.completed)
-      state = e.step(moves[rand() % 4]);
-    std::cout << "episode " << i << " score: " << state.score << ", steps: " << state.step_index << std::endl;
-  }
-  
-  // while (not state.completed) {
-  //   std::ignore = system("clear");
-  //   state = e.step(moves[rand() % 4]);
-  //   e.render(RenderMode::stdout);
-  //   std::flush(std::cout);
-  //   std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
+  // for (int i = 0; i < episodes; ++i) {
+  //   state = e.reset();
+  //   while (not state.completed)
+  //     state = e.step(moves[rand() % 4]);
+  //   std::cout << "episode " << i << " score: " << state.score << ", steps: " << state.step_index << std::endl;
   // }
+  
+  while (not state.completed) {
+    std::ignore = system("clear");
+    state = e.step(moves[rand() % 4]);
+    e.render(RenderMode::human);
+    std::flush(std::cout);
+    std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
+  }
 
   return 0;
 }

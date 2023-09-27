@@ -18,6 +18,7 @@ if (LINUX)
     pacman-rl
     PUBLIC
       dl
+      raylib
   )
 elseif (WIN32)
   message(STATUS "Platform: Windows")
@@ -25,5 +26,6 @@ elseif (WIN32)
   target_link_libraries(
     pacman-rl
     PUBLIC
+      raylib
   )
-endif ()
+endif()

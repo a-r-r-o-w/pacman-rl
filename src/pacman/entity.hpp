@@ -140,7 +140,7 @@ class Ghost: public Entity {
         return;
       
       if (config.mode == GhostMode::chase or config.mode == GhostMode::scatter)
-        direction = opposite_direction[direction];
+        direction = opposite_direction(direction);
       config.mode = mode;
       config.step_index = 0;
     }
@@ -200,8 +200,8 @@ class Pinky: public Ghost {
     Location get_target(Pacman* pacman) {
       switch (config.mode) {
         case GhostMode::chase: {
-          i32 parity_x = movement_direction_delta_x[pacman->direction] < 0 ? -1 : +1;
-          i32 parity_y = movement_direction_delta_y[pacman->direction] < 0 ? -1 : +1;
+          i32 parity_x = movement_direction_delta_x(pacman->direction) < 0 ? -1 : +1;
+          i32 parity_y = movement_direction_delta_y(pacman->direction) < 0 ? -1 : +1;
           Location target = {
             .x = pacman->location.x + target_offset * parity_x,
             .y = pacman->location.y + target_offset * parity_y

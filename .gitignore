@@ -8,6 +8,8 @@ build/
 
 # python
 __pycache__/
+.ipynb_checkpoints/
+.virtual_documents/
 
 # vscode
 .vscode/

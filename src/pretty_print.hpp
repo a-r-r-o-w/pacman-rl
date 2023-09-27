@@ -24,10 +24,10 @@ inline std::string pretty_ghost_config(const GhostConfig &ghost_config) {
     "  .scatter_steps = " + std::to_string(ghost_config.scatter_steps) + ",\n"
     "  .freight_steps = " + std::to_string(ghost_config.freight_steps) + ",\n"
     "  .house_steps = " + std::to_string(ghost_config.house_steps) + ",\n"
-    "  .initial_direction = " + direction_to_string[ghost_config.initial_direction] + ",\n"
+    "  .initial_direction = " + movement_direction_to_string(ghost_config.initial_direction) + ",\n"
     "  .initial_location = " + ghost_config.initial_location.to_string() + ",\n"
     "  .corner = " + ghost_config.corner.to_string() + ",\n"
-    "  .mode = " + ghost_mode_to_string[ghost_config.mode] + "\n"
+    "  .mode = " + ghost_mode_to_string(ghost_config.mode) + "\n"
     "}";
 }
 

@@ -26,8 +26,7 @@ PYBIND11_MODULE(pacman_rl, m) {
     .value("left", MovementDirection::left, "Left direction")
     .value("down", MovementDirection::down, "Down direction")
     .value("right", MovementDirection::right, "Right direction")
-    .value("none", MovementDirection::none, "No direction")
-    .export_values();
+    .value("none", MovementDirection::none, "No direction");
   
   py::class_<GhostConfig>(m, "GhostConfig")
     .def(py::init<>(), "Default constructor")
@@ -66,7 +65,8 @@ PYBIND11_MODULE(pacman_rl, m) {
     .def("pretty", pretty_config);
   
   py::enum_<RenderMode>(m, "RenderMode")
-    .value("STDOUT", RenderMode::stdout, "Render to stdout");
+    .value("ASCII", RenderMode::ascii, "Render to stdout as ASCII")
+    .value("HUMAN", RenderMode::human, "Render in graphics mode using raylib");
 
   py::class_<State>(m, "State")
     .def(py::init<>(), "Default constructor")
@@ -87,7 +87,7 @@ PYBIND11_MODULE(pacman_rl, m) {
     .def(py::init<Config>(), "Constructor with config")
     .def("reset", &Environment::reset, "Reset the environment")
     .def("step", &Environment::step, "Perform an action in the environment")
-    .def("render", &Environment::render, py::arg("mode") = RenderMode::stdout, "Render the environment")
+    .def("render", &Environment::render, py::arg("mode") = RenderMode::ascii, "Render the environment")
     .def("__repr__", [](const Environment &) { return "<pacman_rl.Environment>"; })
     .def("pretty", pretty_environment, "Pretty print the environment");
   
