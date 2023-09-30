@@ -44,15 +44,15 @@ include_directories(./src/pacman)
 include_directories(./src/render)
 
 add_subdirectory(./src)
-# add_subdirectory(./bindings)
+add_subdirectory(./bindings)
 
 # Generate stubs for the python bindings
-# add_custom_command(
-#   OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${PYBIND_BINDING_FILE}.pyi"
-#   COMMAND stubgen --include-private --ignore-errors --verbose -m "${PYBIND_BINDING_FILE}" -o ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-#   DEPENDS "${PYBIND_BINDING_FILE}"
-#   WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-#   COMMENT "Generating stubs for ${PYBIND_BINDING_FILE}"
-# )
+add_custom_command(
+  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${PYBIND_BINDING_FILE}.pyi"
+  COMMAND stubgen --include-private --ignore-errors --verbose -m "${PYBIND_BINDING_FILE}" -o ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+  DEPENDS "${PYBIND_BINDING_FILE}"
+  WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+  COMMENT "Generating stubs for ${PYBIND_BINDING_FILE}"
+)
 
-# add_custom_target(run ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/${PYBIND_BINDING_FILE}.pyi")
+add_custom_target(run ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/${PYBIND_BINDING_FILE}.pyi")

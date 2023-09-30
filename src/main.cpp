@@ -6,7 +6,7 @@
 #include "environment.hpp"
 #include "state.hpp"
 
-i32 sleep_ms = 100;
+i32 sleep_ms = 50;
 Config config = {
   .rows = 21,
   .cols = 19,
@@ -42,14 +42,15 @@ int main() {
   std::cin.tie(nullptr);
 
   srand(time(0));
-  Environment e(config);
+  // Environment e(config, RenderMode::human);
+  Environment e = std::move(make(config, RenderMode::human));
 
   std::vector <MovementDirection> moves = {
     MovementDirection::left, MovementDirection::up, MovementDirection::right, MovementDirection::down
   };
 
-  std::ignore = system("clear");
-  e.render(RenderMode::human);
+  // std::ignore = system("clear");
+  e.render();
   std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
 
   State state = e.reset();
@@ -65,7 +66,7 @@ int main() {
   while (not state.completed) {
     std::ignore = system("clear");
     state = e.step(moves[rand() % 4]);
-    e.render(RenderMode::human);
+    e.render();
     std::flush(std::cout);
     std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
   }

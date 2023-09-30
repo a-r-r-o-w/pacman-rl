@@ -19,6 +19,9 @@ class AsciiRenderer {
         std::cout << '\n';
       }
     }
+
+    void close() const
+    { }
 };
 
 #endif // RENDER_ASCII_RENDERER_H

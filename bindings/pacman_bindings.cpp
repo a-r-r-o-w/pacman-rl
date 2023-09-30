@@ -2,6 +2,7 @@
 #include <pybind11/cast.h>
 #include <pybind11/detail/common.h>
 
+#include "constants.hpp"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
@@ -66,7 +67,8 @@ PYBIND11_MODULE(pacman_rl, m) {
   
   py::enum_<RenderMode>(m, "RenderMode")
     .value("ASCII", RenderMode::ascii, "Render to stdout as ASCII")
-    .value("HUMAN", RenderMode::human, "Render in graphics mode using raylib");
+    .value("HUMAN", RenderMode::human, "Render in graphics mode using raylib")
+    .value("NONE", RenderMode::none, "Do not render");
 
   py::class_<State>(m, "State")
     .def(py::init<>(), "Default constructor")
@@ -84,14 +86,15 @@ PYBIND11_MODULE(pacman_rl, m) {
     .def("pretty", pretty_state);
   
   py::class_<Environment>(m, "Environment")
-    .def(py::init<Config>(), "Constructor with config")
+    .def(py::init<Config, RenderMode>(), py::arg("config"), py::arg("mode") = RenderMode::none, "Constructor with config")
     .def("reset", &Environment::reset, "Reset the environment")
     .def("step", &Environment::step, "Perform an action in the environment")
-    .def("render", &Environment::render, py::arg("mode") = RenderMode::ascii, "Render the environment")
+    .def("render", &Environment::render, "Render the environment")
+    .def("close", &Environment::close, "Close the environment")
     .def("__repr__", [](const Environment &) { return "<pacman_rl.Environment>"; })
     .def("pretty", pretty_environment, "Pretty print the environment");
   
-  m.def("make_env", &make_env, py::return_value_policy::move, "Creates and returns an environment with the given config");
+  m.def("make", &make, py::arg("config"), py::arg("mode") = RenderMode::none, "Creates and returns an environment with the given config", py::return_value_policy::move);
   
   m.def_submodule("pretty_print")
     .def("pretty_location", pretty_location, "Pretty print a location")

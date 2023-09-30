@@ -40,6 +40,7 @@ enum class GhostMode {
 enum class RenderMode {
   ascii,
   human,
+  none,
 };
 
 inline char entity_type_to_char(EntityType entity_type) {

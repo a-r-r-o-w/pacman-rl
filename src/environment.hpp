@@ -94,6 +94,7 @@ class Environment {
     Config config;
     State state;
     Grid grid;
+    RenderMode mode;
     
     std::unique_ptr<Pacman> pacman;
     std::unique_ptr<Blinky> blinky;
@@ -114,9 +115,10 @@ class Environment {
   public:  
     friend std::string pretty_environment(const Environment &env);
 
-    Environment(const Config &c):
+    Environment(const Config &c, RenderMode mode = RenderMode::none):
       config(c),
-      grid(config.rows, config.cols) {
+      grid(config.rows, config.cols),
+      mode(mode) {
       reset();
     }
 
@@ -124,6 +126,7 @@ class Environment {
       config(std::move(other.config)),
       state(std::move(other.state)),
       grid(std::move(other.grid)),
+      mode(std::move(other.mode)),
       pacman(std::move(other.pacman)),
       blinky(std::move(other.blinky)),
       pinky(std::move(other.pinky)),
@@ -132,6 +135,7 @@ class Environment {
       entities(std::move(other.entities)),
       grid_storage(std::move(other.grid_storage)),
       ascii_renderer(std::move(other.ascii_renderer)),
+      graphics_renderer(std::move(other.graphics_renderer)),
       initial_pacman_location(std::move(other.initial_pacman_location))
     { }
 
@@ -141,6 +145,7 @@ class Environment {
       config = std::move(other.config);
       state = std::move(other.state);
       grid = std::move(other.grid);
+      mode = std::move(other.mode);
       pacman = std::move(other.pacman);
       blinky = std::move(other.blinky);
       pinky = std::move(other.pinky);
@@ -149,19 +154,34 @@ class Environment {
       entities = std::move(other.entities);
       grid_storage = std::move(other.grid_storage);
       ascii_renderer = std::move(other.ascii_renderer);
+      graphics_renderer = std::move(other.graphics_renderer);
+      initial_pacman_location = std::move(other.initial_pacman_location);
       return *this;
     }
 
     ~Environment()
     { }
 
-    void render(const RenderMode &mode) {
+    void render() {
       if (mode == RenderMode::ascii)
         ascii_renderer.render(state);
       else if (mode == RenderMode::human)
         graphics_renderer.render(state);
+      else if (mode == RenderMode::none)
+        ;
       else
-        throw std::runtime_error("Only RenderMode::stdout support for now!");
+        throw std::runtime_error("Render mode must be one of ascii, human or none.");
+    }
+
+    void close() const {
+      if (mode == RenderMode::ascii)
+        ascii_renderer.close();
+      else if (mode == RenderMode::human)
+        graphics_renderer.close();
+      else if (mode == RenderMode::none)
+        ;
+      else
+        throw std::runtime_error("Render mode must be one of ascii, human or none.");
     }
 
     State reset() {
@@ -607,8 +627,8 @@ class Environment {
 
 
 
-inline Environment make_env(const Config &config) {
-  return Environment(config);
+inline Environment make(const Config &config, RenderMode mode = RenderMode::none) {
+  return Environment(config, mode);
 }
 
 #endif // HEADER_ENVIRONMENT_H

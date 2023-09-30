@@ -28,10 +28,6 @@ class GraphicsRenderer {
     static constexpr i32 padding = 128.0f;
   
   public:
-    ~GraphicsRenderer() {
-      CloseWindow();
-    }
-
     void render(const State &state) {
       [[maybe_unused]] static auto _ = [&] {
         grid_height = static_cast<int>(state.grid.size());
@@ -71,6 +67,10 @@ class GraphicsRenderer {
       }
 
       EndDrawing();
+    }
+
+    void close() const {
+      CloseWindow();
     }
 
   private:
