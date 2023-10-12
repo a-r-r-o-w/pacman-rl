@@ -1,13 +1,15 @@
 #include <iostream>
+#include <memory>
 #include <pybind11/cast.h>
 #include <pybind11/detail/common.h>
 
-#include "constants.hpp"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
-#include "environment.hpp"
+#include "constants.hpp"
 #include "pretty_print.hpp"
+#include "environment.hpp"
+#include "wrappers/record_video_env.hpp"
 
 namespace py = pybind11;
 
@@ -46,7 +48,10 @@ PYBIND11_MODULE(pacman_rl, m) {
   
   py::class_<Config>(m, "Config")
     .def(py::init<>(), "Default constructor")
-    .def(py::init<i32, i32, i32, std::vector <std::string>, GhostConfig, GhostConfig, GhostConfig, GhostConfig, i32, i32, i32, i32, i32, i32>(), "Constructor with all attributes")
+    .def(
+      py::init<i32, i32, i32, std::vector <std::string>, GhostConfig, GhostConfig, GhostConfig, GhostConfig, i32, i32, i32, i32, i32, i32>(),
+      "Constructor with all attributes"
+    )
     .def_readwrite("rows", &Config::rows, "Number of rows in the grid")
     .def_readwrite("cols", &Config::cols, "Number of columns in the grid")
     .def_readwrite("max_episode_steps", &Config::max_episode_steps, "Maximum number of steps per episode")
@@ -85,16 +90,63 @@ PYBIND11_MODULE(pacman_rl, m) {
     .def("__repr__", [](const State &) { return "<pacman_rl.State>"; })
     .def("pretty", pretty_state);
   
-  py::class_<Environment>(m, "Environment")
-    .def(py::init<Config, RenderMode>(), py::arg("config"), py::arg("mode") = RenderMode::none, "Constructor with config")
-    .def("reset", &Environment::reset, "Reset the environment")
-    .def("step", &Environment::step, "Perform an action in the environment")
-    .def("render", &Environment::render, "Render the environment")
-    .def("close", &Environment::close, "Close the environment")
-    .def("__repr__", [](const Environment &) { return "<pacman_rl.Environment>"; })
+  py::class_<EnvironmentBase>(m, "EnvironmentBase")
+    .def("reset", &EnvironmentBase::reset, "Reset the environment")
+    .def("step", &EnvironmentBase::step, "Perform an action in the environment")
+    .def("get_state", &EnvironmentBase::get_state, "Get the current state of the environment")
+    .def("render", &EnvironmentBase::render, "Render the environment")
+    .def("close", &EnvironmentBase::close, "Close the environment")
+    .def("__repr__", [](const EnvironmentBase &) { return "<pacman_rl.EnvironmentBase>"; })
     .def("pretty", pretty_environment, "Pretty print the environment");
   
-  m.def("make", &make, py::arg("config"), py::arg("mode") = RenderMode::none, "Creates and returns an environment with the given config", py::return_value_policy::move);
+  py::class_<PacmanEnvironment>(m, "PacmanEnvironment")
+    .def(py::init<const Config &, RenderMode>(), py::arg("config"), py::arg("mode") = RenderMode::none, "Constructor with config")
+    .def("reset", &PacmanEnvironment::reset, "Reset the environment")
+    .def("step", &PacmanEnvironment::step, "Perform an action in the environment")
+    .def("get_state", &PacmanEnvironment::get_state, "Get the current state of the environment")
+    .def("render", &PacmanEnvironment::render, "Render the environment")
+    .def("close", &PacmanEnvironment::close, "Close the environment")
+    .def("__repr__", [](const PacmanEnvironment &) { return "<pacman_rl.PacmanEnvironment>"; })
+    .def("pretty", pretty_environment, "Pretty print the environment");
+  
+  py::class_<RecordVideoEnvironment>(m, "RecordVideoEnvironment")
+    .def(
+      py::init<PacmanEnvironment &, bool, u32, std::string, std::string>(),
+      py::arg("env"),
+      py::arg("should_record") = true,
+      py::arg("fps") = 24,
+      py::arg("video_folder") = "recordings",
+      py::arg("output_filename") = "recording.mp4",
+      "Constructor with environment and recording parameters"
+    )
+    .def("reset", &RecordVideoEnvironment::reset, "Reset the environment")
+    .def("step", &RecordVideoEnvironment::step, "Perform an action in the environment")
+    .def("get_state", &RecordVideoEnvironment::get_state, "Get the current state of the environment")
+    .def(
+      "get_snapshot",
+      &RecordVideoEnvironment::get_snapshot,
+      py::arg("step_index") = -1,
+      "Get a snapshot of the currently rendered environment"
+    )
+    .def("render", &RecordVideoEnvironment::render, "Render the environment")
+    .def("close", &RecordVideoEnvironment::close, "Close the environment")
+    .def("__repr__", [](const RecordVideoEnvironment &) { return "<pacman_rl.RecordVideoEnvironment>"; })
+    .def(
+      "pretty",
+      [](const RecordVideoEnvironment &r) {
+        pretty_environment(r.get_env());
+      },
+      "Pretty print the environment"
+    )
+    .doc() = "Environment wrapper to record videos";
+  
+  m.def(
+    "make", &make,
+    py::arg("config"),
+    py::arg("mode") = RenderMode::none,
+    py::return_value_policy::move,
+    "Creates and returns an environment with the given config"
+  );
   
   m.def_submodule("pretty_print")
     .def("pretty_location", pretty_location, "Pretty print a location")

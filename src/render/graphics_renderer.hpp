@@ -24,6 +24,8 @@ class GraphicsRenderer {
 
     std::vector<std::pair<Location, EntityType>> entities;
 
+    bool is_window_initialized = false;
+
     static constexpr i32 cell_size = 30.0f;
     static constexpr i32 padding = 128.0f;
   
@@ -38,11 +40,14 @@ class GraphicsRenderer {
 
         entities.reserve(grid_height * grid_width);
 
+        SetTraceLogLevel(LOG_WARNING);
         InitWindow(window_width, window_height, "Pacman RL");
         SetTargetFPS(60);
 
+        is_window_initialized = true;
+
         return 0;
-      } ();
+      }();
 
       entities.clear();
       for (i32 i = 0; i < grid_height; ++i)
@@ -70,7 +75,8 @@ class GraphicsRenderer {
     }
 
     void close() const {
-      CloseWindow();
+      if (is_window_initialized)
+        CloseWindow();
     }
 
   private:

@@ -89,7 +89,17 @@ struct Config {
   i32 power_pellet_steps = 20;
 };
 
-class Environment {
+class EnvironmentBase {
+  public:
+    virtual State reset() = 0;
+    virtual State step(MovementDirection direction) = 0;
+    virtual State get_state() const = 0;
+    virtual void render() = 0;
+    virtual void close() const = 0;
+    virtual ~EnvironmentBase() { }
+};
+
+class PacmanEnvironment: EnvironmentBase {
   private:
     Config config;
     State state;
@@ -110,19 +120,18 @@ class Environment {
     Location initial_pacman_location = {};
 
     using Step = std::pair <Location, MovementDirection>;
-
   
   public:  
-    friend std::string pretty_environment(const Environment &env);
+    friend std::string pretty_environment(const PacmanEnvironment &env);
 
-    Environment(const Config &c, RenderMode mode = RenderMode::none):
+    PacmanEnvironment(const Config &c, RenderMode mode = RenderMode::none):
       config(c),
       grid(config.rows, config.cols),
       mode(mode) {
       reset();
     }
 
-    Environment(Environment &&other):
+    PacmanEnvironment(PacmanEnvironment &&other):
       config(std::move(other.config)),
       state(std::move(other.state)),
       grid(std::move(other.grid)),
@@ -139,7 +148,7 @@ class Environment {
       initial_pacman_location(std::move(other.initial_pacman_location))
     { }
 
-    Environment& operator=(Environment &&other) {
+    PacmanEnvironment& operator=(PacmanEnvironment &&other) {
       if (this == &other)
         return *this;
       config = std::move(other.config);
@@ -159,32 +168,10 @@ class Environment {
       return *this;
     }
 
-    ~Environment()
+    ~PacmanEnvironment()
     { }
 
-    void render() {
-      if (mode == RenderMode::ascii)
-        ascii_renderer.render(state);
-      else if (mode == RenderMode::human)
-        graphics_renderer.render(state);
-      else if (mode == RenderMode::none)
-        ;
-      else
-        throw std::runtime_error("Render mode must be one of ascii, human or none.");
-    }
-
-    void close() const {
-      if (mode == RenderMode::ascii)
-        ascii_renderer.close();
-      else if (mode == RenderMode::human)
-        graphics_renderer.close();
-      else if (mode == RenderMode::none)
-        ;
-      else
-        throw std::runtime_error("Render mode must be one of ascii, human or none.");
-    }
-
-    State reset() {
+    State reset() override {
       state.step_index = 0;
       state.score = 0;
       state.lives = config.pacman_lives;
@@ -217,7 +204,7 @@ class Environment {
       return state;
     }
     
-    State step(const MovementDirection &direction) {
+    State step(MovementDirection direction) override {
       const auto blinky_target = blinky->get_target(pacman.get());
       const auto pinky_target  = pinky->get_target(pacman.get());
       const auto inky_target   = inky->get_target(pacman.get(), blinky.get());
@@ -331,6 +318,36 @@ class Environment {
       update_state();
       
       return state;
+    }
+
+    State get_state() const override {
+      return state;
+    }
+
+    void render() override {
+      if (mode == RenderMode::ascii)
+        ascii_renderer.render(state);
+      else if (mode == RenderMode::human)
+        graphics_renderer.render(state);
+      else if (mode == RenderMode::none)
+        ;
+      else
+        throw std::runtime_error("Render mode must be one of ascii, human or none.");
+    }
+
+    void close() const override {
+      if (mode == RenderMode::ascii)
+        ascii_renderer.close();
+      else if (mode == RenderMode::human)
+        graphics_renderer.close();
+      else if (mode == RenderMode::none)
+        ;
+      else
+        throw std::runtime_error("Render mode must be one of ascii, human or none.");
+    }
+
+    RenderMode get_render_mode() const {
+      return mode;
     }
   
   private:
@@ -627,8 +644,8 @@ class Environment {
 
 
 
-inline Environment make(const Config &config, RenderMode mode = RenderMode::none) {
-  return Environment(config, mode);
+inline PacmanEnvironment make(const Config &config, RenderMode mode = RenderMode::none) {
+  return PacmanEnvironment(config, mode);
 }
 
 #endif // HEADER_ENVIRONMENT_H

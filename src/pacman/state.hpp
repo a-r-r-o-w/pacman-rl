@@ -1,11 +1,11 @@
 #ifndef PACMAN_STATE_H
 #define PACMAN_STATE_H
-#include "entity.hpp"
 #pragma once
 
 #include <string>
 #include <vector>
 
+#include "entity.hpp"
 #include "types.hpp"
 
 struct State {

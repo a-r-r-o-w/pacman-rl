@@ -1,16 +1,18 @@
 #include <iostream>
 #include <cstdlib>
+#include <memory>
 #include <ostream>
 #include <thread>
 
 #include "environment.hpp"
 #include "state.hpp"
+#include "wrappers/record_video_env.hpp"
 
 i32 sleep_ms = 50;
 Config config = {
   .rows = 21,
   .cols = 19,
-  .max_episode_steps = 1000,
+  .max_episode_steps = 10,
   .map = {
     "###################",
     "#........#........#",
@@ -34,7 +36,7 @@ Config config = {
     "#.................#",
     "###################",
   },
-  .pacman_lives = 20,
+  .pacman_lives = 3,
 };
 
 int main() {
@@ -42,8 +44,8 @@ int main() {
   std::cin.tie(nullptr);
 
   srand(time(0));
-  // Environment e(config, RenderMode::human);
-  Environment e = std::move(make(config, RenderMode::human));
+  PacmanEnvironment p(config, RenderMode::human);
+  RecordVideoEnvironment e(p, true, 24, "recordings", "recording.mp4");
 
   std::vector <MovementDirection> moves = {
     MovementDirection::left, MovementDirection::up, MovementDirection::right, MovementDirection::down
@@ -70,6 +72,8 @@ int main() {
     std::flush(std::cout);
     std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
   }
+
+  e.close();
 
   return 0;
 }

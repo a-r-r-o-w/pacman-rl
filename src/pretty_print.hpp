@@ -100,7 +100,7 @@ inline std::string pretty_state(const State &state) {
 
 //     Location initial_pacman_location = {};
 
-inline std::string pretty_environment(const Environment &env) {
+inline std::string pretty_environment(const PacmanEnvironment &env) {
   return
     "pacman_rl.Environment{\n"
     "  .config = " + pretty_config(env.config) + ",\n"

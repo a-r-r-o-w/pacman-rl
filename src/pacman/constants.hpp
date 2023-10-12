@@ -1,9 +1,9 @@
 #ifndef PACMAN_CONSTANTS_H
 #define PACMAN_CONSTANTS_H
-#include <unordered_map>
 #pragma once
 
 #include <ostream>
+#include <unordered_map>
 #include <utility>
 
 #include "types.hpp"
