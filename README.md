@@ -1,6 +1,6 @@
 # PacmanRL
 
-PacmanRL is reinforcement learning environment for Pacman with an API similar to OpenAI Gym.
+PacmanRL is a reinforcement learning environment for Pacman with an API similar to OpenAI Gym.
 
 *Note: This is a WIP. The code is held together with duct tape and will probably break or not compile if you try to use it 🫠*
 
@@ -157,7 +157,6 @@ int main() {
   while (not state.completed) {
     state = e.step(moves[rand() % 4]);
     e.render();
-    std::flush(std::cout);
     std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
   }
 
