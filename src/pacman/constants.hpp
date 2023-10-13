@@ -88,7 +88,7 @@ inline i32 entity_type_render_precedence(EntityType entity_type) {
     { EntityType::gate,         3 },
     { EntityType::pellet,       0 },
     { EntityType::power_pellet, 0 },
-    { EntityType::none,         9 },
+    { EntityType::none,         0 },
   };
 
   return entity_type_render_precedence.at(entity_type);

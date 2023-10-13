@@ -6,13 +6,14 @@
 
 #include "environment.hpp"
 #include "state.hpp"
+#include "render/render_utils.hpp"
 #include "wrappers/record_video_env.hpp"
 
 i32 sleep_ms = 50;
 Config config = {
   .rows = 21,
   .cols = 19,
-  .max_episode_steps = 10,
+  .max_episode_steps = 100,
   .map = {
     "###################",
     "#........#........#",
@@ -51,8 +52,9 @@ int main() {
     MovementDirection::left, MovementDirection::up, MovementDirection::right, MovementDirection::down
   };
 
-  // std::ignore = system("clear");
+  std::ignore = system("clear");
   e.render();
+  render_grid_to_png(e.get_state().grid);
   std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
 
   State state = e.reset();
@@ -66,7 +68,7 @@ int main() {
   // }
   
   while (not state.completed) {
-    std::ignore = system("clear");
+    // std::ignore = system("clear");
     state = e.step(moves[rand() % 4]);
     e.render();
     std::flush(std::cout);

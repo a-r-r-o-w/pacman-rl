@@ -22,3 +22,7 @@ compile_commands.json
 recordings/
 *.mp4
 *.png
+
+# ml models
+*.pt
+*.h5

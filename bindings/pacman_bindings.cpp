@@ -10,6 +10,7 @@
 #include "pretty_print.hpp"
 #include "environment.hpp"
 #include "wrappers/record_video_env.hpp"
+#include "render/render_utils.hpp"
 
 namespace py = pybind11;
 
@@ -146,6 +147,15 @@ PYBIND11_MODULE(pacman_rl, m) {
     py::arg("mode") = RenderMode::none,
     py::return_value_policy::move,
     "Creates and returns an environment with the given config"
+  );
+
+  m.def(
+    "render_grid_to_png", &render_grid_to_png,
+    py::arg("grid"),
+    py::arg("filename") = "tmp.png",
+    py::arg("cell_size") = 30,
+    py::arg("padding") = 4,
+    "Renders the given grid to a PNG file"
   );
   
   m.def_submodule("pretty_print")
