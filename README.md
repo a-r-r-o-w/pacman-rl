@@ -172,7 +172,7 @@ int main() {
 After training for not too many steps (my GPU was dying because of how unoptimized this is), here's an interesting run that demonstrates duct tape code in action, buggy implementation of the environment, and a Pacman that's not very good at playing Pacman.
 
 <div align="center">
-  <video src="https://github.com/a-r-r-o-w/pacman-rl/assets/72266394/c063757f-883e-408d-8aae-98005cdd24e0" controls autoplay> Your browser does not support the video tag. </video>
+  <video src="https://github.com/a-r-r-o-w/pacman-rl/assets/72266394/591a9b7d-b287-4e28-baf8-70bae19c38c5" controls autoplay> Your browser does not support the video tag. </video>
 </div>
 
 ### License
